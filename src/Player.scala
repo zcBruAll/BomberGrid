@@ -40,4 +40,7 @@ class Player(val playerId: Int, var life: Int = 100, var cooldown: Int = 0) {
   def reduceCooldown(): Unit = {
     cooldown = math.max(cooldown - 1, 0)
   }
+
+  override def toString: String =
+    f"${playerId * 16}"
 }

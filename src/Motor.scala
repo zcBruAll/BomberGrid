@@ -7,12 +7,22 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object Motor extends App {
+    // LAN variables
     val port = 9235                     // Port of the game communication       92 : Uranium atomic number - 235 : Uranium 235 is used in nuclear bombs
     var in: BufferedReader = _          // messages coming in  - destined to this
     var out: PrintWriter = _            // messages coming out - destined to the other part
     var serverSocket: ServerSocket = _  // Server socket
     var clientSocket: Socket = _        // Client socket
     var isHost = true                   // Boolean if the current instance is the host or not
+
+    // Game variables
+    var room: Room = _
+    val player1 = new Player(1)
+    val player2 = new Player(2)
+    val cellSize = 40
+    val diameter = (cellSize / 1.5).floor.toInt
+    val fg = new FunGraphics(cellSize * room.width, cellSize * room.height, "BomberGrid")
+    var isPlaying = true
 
     println("Enter your choice:\nH - Host a game (Host)\nC - Join a game (Client)")
     scala.io.StdIn.readLine().toUpperCase match {
@@ -50,6 +60,8 @@ object Motor extends App {
         println(s"Connected to the server at $hostIP:$port")
 
         initCommunication()
+
+        initGame()
     }
 
     /**
@@ -61,21 +73,6 @@ object Motor extends App {
 
         listen()
     }
-
-    val room = new Room(20, 15)
-    val p1 = new Player(1)
-    val p2 = new Player(2)
-
-    p1.setPos(0, 0)
-    p2.setPos(18, 13)
-
-    val cellSize = 40
-    val diameter = (cellSize / 1.5).floor.toInt
-    val fg = new FunGraphics(cellSize * room.width, cellSize * room.height, "BomberGrid")
-
-    var isPlaying = true
-
-    startGame()
 
     /**
      * Send a message to the other player
@@ -106,6 +103,18 @@ object Motor extends App {
         }
     }
 
+    def initGame(): Unit = {
+        room = new Room(20, 15)
+        room.generateRoom()
+
+        player1.setPos(0, 0)
+        room.getRoom()(0)(0).setPlayerId(1)
+        player2.setPos(14, 14)
+        room.getRoom()(0)(0).setPlayerId(2)
+
+        send(room.toString)
+    }
+
     /**
      * Start the game loop
      */
@@ -125,7 +134,24 @@ object Motor extends App {
      */
     def updateGame(msg: String): Unit = {
         if (msg.startsWith("INIT")) {
-            val msgInfo = msg.substring(4)
+            val msgInfo = msg.substring(4).split(";")
+            val dim = msgInfo(0).split("x")
+            room = new Room(dim(0).toInt, dim(1).toInt)
+
+            val r = msgInfo(1).split("-").map(_.split(":").map(_.toInt))
+            for (i <- r.indices;
+                 j <- r(i).indices) {
+                if (r(i)(j) & 16 == 1) {
+                    r(i)(j) -= 16
+                    player1.setPos(i, j)
+                }
+                if (r(i)(j) & 32 == 1) {
+                    r(i)(j) -= 32
+                    player2.setPos(i, j)
+                }
+                room.getRoom()(i)(j).buildWalls(r(i)(j))
+            }
+            startGame()
         } else if (msg.startsWith("UPDT")) {
             val newMsg = msg.substring(4)
         } else if (msg.startsWith("WIN")) {
@@ -166,10 +192,10 @@ object Motor extends App {
             if ((walls & 8) != 0)       // Left wall
                 fg.drawLine(x, y, x, y + cellSize)
 
-            val posP1 = p1.getPos
+            val posP1 = player1.getPos
             fg.setColor(Color.CYAN)
             fg.drawFilledCircle(posP1._1 * cellSize + (cellSize - diameter) / 2, posP1._2 * cellSize + (cellSize - diameter) / 2, diameter)
-            val posP2 = p2.getPos
+            val posP2 = player2.getPos
             fg.setColor(Color.ORANGE)
             fg.drawFilledCircle(posP2._1 * cellSize + (cellSize - diameter) / 2, posP2._2 * cellSize + (cellSize - diameter) / 2, diameter)
         }
