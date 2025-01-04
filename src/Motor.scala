@@ -21,7 +21,7 @@ object Motor extends App {
     val player2 = new Player(2)
     val cellSize = 40
     val diameter = (cellSize / 1.5).floor.toInt
-    val fg = new FunGraphics(cellSize * room.width, cellSize * room.height, "BomberGrid")
+    var fg: FunGraphics = _
     var isPlaying = true
 
     println("Enter your choice:\nH - Host a game (Host)\nC - Join a game (Client)")
@@ -46,6 +46,8 @@ object Motor extends App {
         println("Client connected")
 
         initCommunication()
+
+        initGame()
     }
 
     /**
@@ -60,8 +62,6 @@ object Motor extends App {
         println(s"Connected to the server at $hostIP:$port")
 
         initCommunication()
-
-        initGame()
     }
 
     /**
@@ -112,7 +112,11 @@ object Motor extends App {
         player2.setPos(14, 14)
         room.getRoom()(0)(0).setPlayerId(2)
 
+        fg = new FunGraphics(cellSize * room.width, cellSize * room.height, "BomberGrid")
+
         send(room.toString)
+
+        startGame()
     }
 
     /**
@@ -141,11 +145,11 @@ object Motor extends App {
             val r = msgInfo(1).split("-").map(_.split(":").map(_.toInt))
             for (i <- r.indices;
                  j <- r(i).indices) {
-                if (r(i)(j) & 16 == 1) {
+                if ((r(i)(j) & 16) == 16) {
                     r(i)(j) -= 16
                     player1.setPos(i, j)
                 }
-                if (r(i)(j) & 32 == 1) {
+                if ((r(i)(j) & 32) == 32) {
                     r(i)(j) -= 32
                     player2.setPos(i, j)
                 }
