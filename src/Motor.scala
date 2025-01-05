@@ -62,6 +62,9 @@ object Motor extends App {
         println(s"Connected to the server at $hostIP:$port")
 
         initCommunication()
+
+        while (isPlaying)
+            Thread.sleep(100)
     }
 
     /**
@@ -79,6 +82,7 @@ object Motor extends App {
      * @param s The message to be sent
      */
     def send(s: String): Unit = {
+        println(s"Msg: $s")
         out.println(s)
     }
 
@@ -97,7 +101,7 @@ object Motor extends App {
                         clientSocket.close()
                     return
                 }
-                println(s"Host says: $msg")
+                println(s"Received: $msg")
                 updateGame(msg)
             }
         }
@@ -110,11 +114,9 @@ object Motor extends App {
         player1.setPos(0, 0)
         room.getRoom()(0)(0).setPlayerId(1)
         player2.setPos(14, 14)
-        room.getRoom()(0)(0).setPlayerId(2)
+        room.getRoom()(14)(14).setPlayerId(2)
 
-        fg = new FunGraphics(cellSize * room.width, cellSize * room.height, "BomberGrid")
-
-        send(room.toString)
+        send(s"INIT${room.toString}")
 
         startGame()
     }
@@ -123,6 +125,8 @@ object Motor extends App {
      * Start the game loop
      */
     def startGame(): Unit = {
+        fg = new FunGraphics(cellSize * room.width, cellSize * room.height, "BomberGrid")
+
         while (isPlaying) {
             // TODO: Player actions
 
