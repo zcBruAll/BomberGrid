@@ -15,13 +15,15 @@ class Cell {
     walls |= id
   }
 
-  def getWalls(): Int = walls
+  def getWalls: Int = walls
 
   def setPlayerId(id: Int): Unit = {
     playerId |= id
   }
 
   override def toString: String = {
-    f"${walls + playerId * 16}"
+    f"${this.toInt}"
   }
+
+  def toInt: Int = walls + playerId * 16
 }

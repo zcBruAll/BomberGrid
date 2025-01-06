@@ -16,6 +16,9 @@ class Player(val playerId: Int, var life: Int = 100, var cooldown: Int = 0) {
 
   def getPos: (Int, Int) = (x, y)
 
+  def getPosToString: String =
+    s"$x:$y"
+
   def setPos(pos: (Int, Int)): Unit = {
     x = pos._1
     y = pos._2
@@ -28,16 +31,16 @@ class Player(val playerId: Int, var life: Int = 100, var cooldown: Int = 0) {
 
   def takeDmg(dmg: Int): Unit = {
     life -= dmg
-    if (!checkAlive()) // Lost the game
+    if (!checkAlive) // Lost the game
       Motor.endGame(3 - playerId)
 
   }
 
-  def checkAlive(): Boolean = {
+  def checkAlive: Boolean = {
     life > 0
   }
 
-  def reduceCooldown(): Unit = {
+  def reduceCooldown: Unit = {
     cooldown = math.max(cooldown - 1, 0)
   }
 
