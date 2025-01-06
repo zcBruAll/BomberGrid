@@ -4,7 +4,13 @@ class Room(val width: Int, val height: Int) {
   private val player1: Player = new Player(1)
   private val player2: Player = new Player(2)
 
-  private val directionMatrice = Array[(Int, Int)]((0,-1), (1,0), (0,1), (-1,0))
+  private val directions = Map(
+    1 -> (0, -1),   // Up
+    2 -> (1, 0),    // Right
+    4 -> (0, 1),    // Down
+    8 -> (-1, 0)    // Left
+  )
+
 
   def getRoom: Array[Array[Cell]] = room
 
@@ -21,17 +27,19 @@ class Room(val width: Int, val height: Int) {
     room(x)(y).setPlayerId(player.playerId)
   }
 
-  def canMove(player: Player, direction: Int): Boolean = {
-    val (x, y) = player.getPos
-    (room(x)(y).toInt & direction) == 0
-  }
-
   def tryMove(player: Player, direction: Int): (Boolean, Int, Int) = {
-    if (canMove(player, direction)) {
-      val pos = player.getPos
-      val index = (math.log(direction) / math.log(2)).toInt
-      movePlayer(player, pos._1 + directionMatrice(index)._1, pos._2 + directionMatrice(index)._2)
-      return (true, pos._1 + directionMatrice(index)._1, pos._2 + directionMatrice(index)._2)
+    directions.get(direction) match {
+      case Some((dx, dy)) =>
+        val (x, y) = player.getPos
+        if ((room(x)(y).toInt & direction) == 0) {
+          val newX = x + dx
+          val newY = y + dy
+          if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+            movePlayer(player, newX, newY)
+            return (true, newX, newY)
+          }
+        }
+      case None => // Invalid direction
     }
 
     (false, 0, 0)

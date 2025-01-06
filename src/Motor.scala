@@ -129,25 +129,22 @@ object Motor extends App {
 
         fg.setKeyManager(new KeyAdapter {
             override def keyPressed(e: KeyEvent): Unit = {
-                var moveToVerify = 0
-                if (e.getKeyChar == 'w') {
-                    moveToVerify = 1
-                }
-                if (e.getKeyChar == 'd') {
-                    moveToVerify = 2
-                }
-                if (e.getKeyChar == 's') {
-                    moveToVerify = 4
-                }
-                if (e.getKeyChar == 'a') {
-                    moveToVerify = 8
-                }
+                val keyToMove = Map(
+                    'w' -> 1,
+                    'd' -> 2,
+                    's' -> 4,
+                    'a' -> 8
+                )
+
+                val moveToVerify = keyToMove.getOrElse(e.getKeyChar, 0)
+
                 if (moveToVerify != 0) {
                     val player = room.getPlayer(if (isHost) 1 else 2)
                     val move = room.tryMove(player, moveToVerify)
                     if (move._1)
                         send(s"UPDTMOVE${player.playerId};${move._2}:${move._3}")
                 }
+
                 if (e.getKeyChar == 'q')
                     send(s"UPDTDROP${
                         if (isHost)
@@ -195,9 +192,9 @@ object Motor extends App {
             if (newMsg.startsWith("MOVE")) {
                 // UPDTMOVE1;3:4
                 val moveInfo = newMsg.substring(4).split(";")
-                val playerId = moveInfo(0)
-                val pos = moveInfo(1).split(":")
-                // TODO: Get player by id
+                val playerId = moveInfo(0).toInt
+                val pos = moveInfo(1).split(":").map(_.toInt)
+                room.movePlayer(room.getPlayer(playerId), pos(0), pos(1))
             } else if (newMsg.startsWith("DROP")) {
                 // UPDTDROP3:4;12335781
                 val dropInfo = newMsg.substring(4).split(";")
