@@ -111,7 +111,7 @@ object Motor extends App {
 
     def initGame(): Unit = {
         room = new Room(20, 15)
-        room.generateRoom
+        room.generateRoom()
 
         room.movePlayer(room.getPlayer(1), 0, 0)
         room.movePlayer(room.getPlayer(2), 14, 14)
@@ -145,17 +145,24 @@ object Motor extends App {
                         send(s"UPDTMOVE${player.playerId};${move._2}:${move._3}")
                 }
 
-                if (e.getKeyChar == 'q')
-                    send(s"UPDTDROP${
-                        if (isHost)
-                            room.getPlayer(1).getPosToString
-                        else
-                            room.getPlayer(2).getPosToString
-                    }")
+                if (e.getKeyCode == KeyEvent.VK_SPACE) {
+                    val player = room.getPlayer(if (isHost) 1 else 2)
+                    if (player.canDrop) {
+                        val pos = player.getPos
+                        val timestamp = System.currentTimeMillis()
+                        val bomb = Bomb(pos._1, pos._2, timestamp)
+
+                        room.addBomb(bomb)
+
+                        send(s"UPDTDROP${pos._1}:${pos._2};$timestamp")
+                    }
+                }
             }
         })
 
         while (isPlaying) {
+            room.checkExplosions()
+
             displayGame()
 
             fg.syncGameLogic(60)
@@ -198,13 +205,14 @@ object Motor extends App {
             } else if (newMsg.startsWith("DROP")) {
                 // UPDTDROP3:4;12335781
                 val dropInfo = newMsg.substring(4).split(";")
-                val pos = dropInfo(0).split(":")
-                val timeDropped = dropInfo(1)
-                // TODO: Add bomb
+                val pos = dropInfo(0).split(":").map(_.toInt)
+                val timeDropped = dropInfo(1).toLong
+                room.addBomb(Bomb(pos(0), pos(1), timeDropped))
             }
         } else if (msg.startsWith("WIN")) {
             // WIN2
             val winnerId = msg.substring(3)
+            isPlaying = false
         } else {
             println(s"Incorrect message, skipping it: $msg")
         }
@@ -241,6 +249,13 @@ object Motor extends App {
                     fg.drawLine(x, y + cellSize, x + cellSize, y + cellSize)
                 if ((walls & 8) != 0)       // Left wall
                     fg.drawLine(x, y, x, y + cellSize)
+
+                room.getActiveBombs.foreach { bomb =>
+                    val x = bomb.x * cellSize + cellSize / 4
+                    val y = bomb.y * cellSize + cellSize / 4
+                    fg.setColor(Color.RED)
+                    fg.drawFilledCircle(x, y, cellSize / 2)
+                }
 
                 val posP1 = room.getPlayer(1).getPos
                 fg.setColor(Color.CYAN)
