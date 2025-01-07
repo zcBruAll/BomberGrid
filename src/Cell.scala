@@ -1,5 +1,6 @@
 class Cell {
   private var walls: Int = 0
+  private var playerId: Int = 0
 
   /**
    * Build one or multiples wall for the cell according to the following notation:
@@ -11,12 +12,18 @@ class Cell {
    * Example: 14 = Right, Bottom and Left
    */
   def buildWalls(id: Int): Unit = {
-    walls = walls | id
+    walls |= id
   }
 
-  def getWalls(): Int = walls
+  def getWalls: Int = walls
+
+  def setPlayerId(id: Int): Unit = {
+    playerId |= id
+  }
 
   override def toString: String = {
-    f"$walls"
+    f"${this.toInt}"
   }
+
+  def toInt: Int = walls + playerId * 16
 }
