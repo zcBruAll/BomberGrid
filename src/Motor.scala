@@ -1,7 +1,8 @@
+import GraphicMotor._
 import hevs.graphics.FunGraphics
 
-import java.awt.Color
-import java.awt.event.{KeyAdapter, KeyEvent}
+import java.awt.{Color, Font, Rectangle}
+import java.awt.event.{KeyAdapter, KeyEvent, MouseAdapter, MouseEvent}
 import java.io.{BufferedReader, InputStreamReader, PrintWriter}
 import java.net.{ServerSocket, Socket}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,17 +19,46 @@ object Motor extends App {
 
     // Game variables
     var room: Room = _
-    val cellSize = 40
-    val diameter = (cellSize / 1.5).floor.toInt
-    var fg: FunGraphics = _
     var isPlaying = true
     var gameInitialized = false
 
-    println("Enter your choice:\nH - Host a game (Host)\nC - Join a game (Client)")
-    scala.io.StdIn.readLine().toUpperCase match {
-        case "H" => startHost()
-        case "C" => startClient()
-        case _ => println("Invalid choice, exiting...")
+    // Front-end variables
+    val cellSize = 40
+    val diameter = (cellSize / 1.5).floor.toInt
+    val fg: FunGraphics = new FunGraphics(50 + cellSize * 20, 50 + cellSize * 15, "BomberGrid")
+    val menuWidth = 300
+
+    displayMenu("Start menu")
+
+    def displayMenu(t: String): Unit = {
+        val hostButton = new Rectangle((fg.width - menuWidth) / 2, fg.height / 2 - 105, 300, 50)
+        val joinButton = new Rectangle((fg.width - menuWidth) / 2, fg.height / 2 - 35, 300, 50)
+        val exitButton = new Rectangle((fg.width - menuWidth) / 2, fg.height / 2 + 35, 300, 50)
+
+        fg.clear()
+
+        fg.addMouseListener(new MouseAdapter {
+            override def mouseClicked(e: MouseEvent): Unit = {
+                val x = e.getX
+                val y = e.getY
+
+                if (hostButton.contains(x, y))
+                    startHost()
+                else if (joinButton.contains(x, y))
+                    startClient()
+                else if (exitButton.contains(x, y))
+                    quit()
+            }
+        })
+
+        val fontTitle = new Font("SansSerif", Font.BOLD, 36)
+        val fontText = new Font("SansSerif", Font.BOLD, 24)
+
+        drawCenteredString(fg, t, (fg.width - menuWidth) / 2, fg.height / 2 - 175, 300, 50, fontTitle)
+
+        drawButton(fg, hostButton.x, hostButton.y, hostButton.width, hostButton.height, "Host a game", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
+        drawButton(fg, joinButton.x, joinButton.y, joinButton.width, joinButton.height, "Join a game", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
+        drawButton(fg, exitButton.x, exitButton.y, exitButton.width, exitButton.height, "Quit", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
     }
 
     /**
@@ -38,9 +68,16 @@ object Motor extends App {
         isHost = true
         serverSocket = new ServerSocket(port)
         val localIp = java.net.InetAddress.getLocalHost.getHostAddress
-        println(s"Hosting on IP: $localIp:$port")
 
-        println("Waiting for a client to connect...")
+        fg.clear()
+
+        val fontTitle = new Font("SansSerif", Font.PLAIN, 24)
+        val fontIp = new Font("SansSerif", Font.BOLD, 24)
+        val fontSubtitle = new Font("SansSerif", Font.PLAIN, 18)
+
+        drawCenteredString(fg, "Hosting on:", (fg.width - menuWidth) / 2, fg.height / 2 - 45, 300, 24, fontTitle)
+        drawCenteredString(fg, s"$localIp", (fg.width - menuWidth) / 2, fg.height / 2 - 15, 300, 24, fontIp)
+        drawCenteredString(fg, "Waiting for a client", (fg.width - menuWidth) / 2, fg.height / 2 + 15, 300, 18, fontSubtitle)
 
         clientSocket = serverSocket.accept()
         println("Client connected")
@@ -55,6 +92,15 @@ object Motor extends App {
      */
     def startClient(): Unit = {
         isHost = false
+
+        fg.clear()
+
+        var hostIp = ""
+
+        val fontInstruction = new Font("SansSerif", Font.PLAIN, 24)
+        drawCenteredString(fg, "Enter the host IP", (fg.width - menuWidth) / 2, fg.height / 2 - 85, 300, 30, fontInstruction)
+        drawButton(fg, (fg.width - menuWidth) / 2, fg.height / 2 - 25, 300, 50, s"$hostIp", Color.WHITE, Color.BLACK, 2, Color.BLACK, fontInstruction)
+
         println("Enter the host's IP address: ")
         val hostIP = scala.io.StdIn.readLine()
 
@@ -66,6 +112,10 @@ object Motor extends App {
         while (!gameInitialized)
             Thread.sleep(100)
         startGame()
+    }
+
+    def quit(): Unit = {
+        System.exit(0)
     }
 
     /**
@@ -125,45 +175,49 @@ object Motor extends App {
      * Start the game loop
      */
     def startGame(): Unit = {
-        fg = new FunGraphics(cellSize * room.width, cellSize * room.height, "BomberGrid")
+        fg.clear()
 
-        fg.setKeyManager(new KeyAdapter {
+        fg.mainFrame.addKeyListener(new KeyAdapter {
             override def keyPressed(e: KeyEvent): Unit = {
-                val keyToMove = Map(
-                    'w' -> 1,
-                    'd' -> 2,
-                    's' -> 4,
-                    'a' -> 8
-                )
+                if (isPlaying) {
+                    val keyToMove = Map(
+                        'w' -> 1,
+                        'd' -> 2,
+                        's' -> 4,
+                        'a' -> 8
+                    )
 
-                val moveToVerify = keyToMove.getOrElse(e.getKeyChar, 0)
+                    val moveToVerify = keyToMove.getOrElse(e.getKeyChar, 0)
 
-                if (moveToVerify != 0) {
-                    val player = room.getPlayer(if (isHost) 1 else 2)
-                    val move = room.tryMove(player, moveToVerify)
-                    if (move._1)
-                        send(s"UPDTMOVE${player.playerId};${move._2}:${move._3}")
-                }
+                    if (moveToVerify != 0) {
+                        val player = room.getPlayer(if (isHost) 1 else 2)
+                        val move = room.tryMove(player, moveToVerify)
+                        if (move._1)
+                            send(s"UPDTMOVE${player.playerId};${move._2}:${move._3}")
+                    }
 
-                if (e.getKeyCode == KeyEvent.VK_SPACE) {
-                    val player = room.getPlayer(if (isHost) 1 else 2)
-                    if (player.canDrop) {
-                        val pos = player.getPos
-                        val timestamp = System.currentTimeMillis()
-                        val bomb = Bomb(pos._1, pos._2, timestamp)
+                    if (e.getKeyCode == KeyEvent.VK_SPACE) {
+                        val player = room.getPlayer(if (isHost) 1 else 2)
+                        if (player.canDrop) {
+                            val pos = player.getPos
+                            val timestamp = System.currentTimeMillis()
+                            val bomb = Bomb(pos._1, pos._2, timestamp)
 
-                        room.addBomb(bomb)
+                            room.addBomb(bomb)
 
-                        send(s"UPDTDROP${pos._1}:${pos._2};$timestamp")
+                            send(s"UPDTDROP${pos._1}:${pos._2};$timestamp")
+                        }
                     }
                 }
             }
         })
 
+        fg.mainFrame.requestFocus()
+
         while (isPlaying) {
             room.checkExplosions()
 
-            displayGame()
+            displayGame(fg, room, cellSize, diameter)
 
             fg.syncGameLogic(60)
         }
@@ -226,44 +280,5 @@ object Motor extends App {
         send(f"WIN$winnerId")
         isPlaying = false
         // TODO: Handle further end of game
-    }
-
-    /**
-     * Render the game with FunGraphics
-     */
-    def displayGame(): Unit = {
-        fg.frontBuffer.synchronized {
-            fg.clear(Color.WHITE)
-            for (i <- 0 until room.width;
-                 j <- 0 until room.height) {
-                val x = cellSize * i
-                val y = cellSize * j
-
-                fg.setColor(Color.BLACK)
-                val walls = room.getRoom(i)(j).getWalls
-                if ((walls & 1) != 0)       // Upper wall
-                    fg.drawLine(x, y, x + cellSize, y)
-                if ((walls & 2) != 0)       // Right wall
-                    fg.drawLine(x + cellSize, y, x + cellSize, y + cellSize)
-                if ((walls & 4) != 0)       // Bottom wall
-                    fg.drawLine(x, y + cellSize, x + cellSize, y + cellSize)
-                if ((walls & 8) != 0)       // Left wall
-                    fg.drawLine(x, y, x, y + cellSize)
-
-                room.getActiveBombs.foreach { bomb =>
-                    val x = bomb.x * cellSize + cellSize / 4
-                    val y = bomb.y * cellSize + cellSize / 4
-                    fg.setColor(Color.RED)
-                    fg.drawFilledCircle(x, y, cellSize / 2)
-                }
-
-                val posP1 = room.getPlayer(1).getPos
-                fg.setColor(Color.CYAN)
-                fg.drawFilledCircle(posP1._1 * cellSize + (cellSize - diameter) / 2, posP1._2 * cellSize + (cellSize - diameter) / 2, diameter)
-                val posP2 = room.getPlayer(2).getPos
-                fg.setColor(Color.ORANGE)
-                fg.drawFilledCircle(posP2._1 * cellSize + (cellSize - diameter) / 2, posP2._2 * cellSize + (cellSize - diameter) / 2, diameter)
-            }
-        }
     }
 }
