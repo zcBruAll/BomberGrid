@@ -81,6 +81,7 @@ object GraphicMotor {
       fg.drawFillRect(x + width - borderWidth, y, borderWidth, height)
     }
 
-    fg.drawString(x, y, t, font, foreground)
+    val dy = height - ((height - fg.getStringSize(t, font).getHeight.toInt) / 2) - 4
+    fg.drawString(x + 10, y + dy, t, font, foreground)
   }
 }
