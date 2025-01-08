@@ -14,8 +14,8 @@ object GraphicMotor {
       fg.clear(Color.WHITE)
       for (i <- 0 until room.width;
            j <- 0 until room.height) {
-        val x = cellSize * i
-        val y = cellSize * j
+        val x = 25 + cellSize * i
+        val y = 25 + cellSize * j
 
         fg.setColor(Color.BLACK)
         val walls = room.getRoom(i)(j).getWalls
@@ -29,18 +29,18 @@ object GraphicMotor {
           fg.drawLine(x, y, x, y + cellSize)
 
         room.getActiveBombs.foreach { bomb =>
-          val x = bomb.x * cellSize + cellSize / 4
-          val y = bomb.y * cellSize + cellSize / 4
+          val x = 25 + bomb.x * cellSize + cellSize / 4
+          val y = 25 + bomb.y * cellSize + cellSize / 4
           fg.setColor(Color.RED)
           fg.drawFilledCircle(x, y, cellSize / 2)
         }
 
         val posP1 = room.getPlayer(1).getPos
         fg.setColor(Color.CYAN)
-        fg.drawFilledCircle(posP1._1 * cellSize + (cellSize - playerDiameter) / 2, posP1._2 * cellSize + (cellSize - playerDiameter) / 2, playerDiameter)
+        fg.drawFilledCircle(25 + posP1._1 * cellSize + (cellSize - playerDiameter) / 2, 25 + posP1._2 * cellSize + (cellSize - playerDiameter) / 2, playerDiameter)
         val posP2 = room.getPlayer(2).getPos
         fg.setColor(Color.ORANGE)
-        fg.drawFilledCircle(posP2._1 * cellSize + (cellSize - playerDiameter) / 2, posP2._2 * cellSize + (cellSize - playerDiameter) / 2, playerDiameter)
+        fg.drawFilledCircle(25 + posP2._1 * cellSize + (cellSize - playerDiameter) / 2, 25 + posP2._2 * cellSize + (cellSize - playerDiameter) / 2, playerDiameter)
       }
     }
   }
