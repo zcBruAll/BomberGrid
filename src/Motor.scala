@@ -1,5 +1,6 @@
 import GraphicMotor._
 import hevs.graphics.FunGraphics
+import hevs.graphics.utils.GraphicsBitmap
 
 import java.awt.event.{KeyAdapter, KeyEvent, MouseAdapter, MouseEvent}
 import java.awt.{Color, Font, Rectangle}
@@ -24,13 +25,16 @@ object Motor extends App {
 	val fg: FunGraphics =
 		new FunGraphics(50 + cellSize * 20, 50 + cellSize * 15, "BomberGrid")
 	val menuWidth = 300
+	val bombImg = new GraphicsBitmap("/res/img/bomb.png")
+	val planeImg = new GraphicsBitmap("/res/img/plane.png")
+	val player1Img = new GraphicsBitmap("/res/img/p1.png")
+	val player2Img = new GraphicsBitmap("/res/img/p2.png")
 	var in: BufferedReader = _
 	var out: PrintWriter = _
 	var serverSocket: ServerSocket = _
 	var clientSocket: Socket = _
 	var isHost = true
 	var hostIP = ""
-
 	// Game variables
 	var room: Room = _
 	var isPlaying = true
@@ -42,7 +46,6 @@ object Motor extends App {
 	var gameKeyListener: KeyAdapter = _
 
 	Runtime.getRuntime.addShutdownHook(new Thread(() => {
-
 		if (isHost && serverSocket != null && !serverSocket.isClosed) {
 			send("EXIT")
 			serverSocket.close()
@@ -55,9 +58,9 @@ object Motor extends App {
 	displayMenu("Welcome Bomber!")
 
 	def displayMenu(t: String): Unit = {
-		val hostButton = new Rectangle((fg.width - menuWidth) / 2, fg.height / 2 - 105, 300, 50)
-		val joinButton = new Rectangle((fg.width - menuWidth) / 2, fg.height / 2 - 35, 300, 50)
-		val exitButton = new Rectangle((fg.width - menuWidth) / 2, fg.height / 2 + 35, 300, 50)
+		val hostButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 15, 300, 50)
+		val joinButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 90, 300, 50)
+		val exitButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 165, 300, 50)
 
 		fg.clear()
 
@@ -80,7 +83,9 @@ object Motor extends App {
 		val fontTitle = new Font("SansSerif", Font.BOLD, 36)
 		val fontText = new Font("SansSerif", Font.BOLD, 24)
 
-		drawCenteredString(fg, t, (fg.width - menuWidth) / 2, fg.height / 2 - 175, 300, 50, fontTitle)
+		fg.drawTransformedPicture(fg.width / 2, -25 + planeImg.getHeight / 2, 0, 1, planeImg)
+
+		drawCenteredString(fg, t, (fg.width - menuWidth) / 2, planeImg.getHeight - 60, 300, 50, fontTitle)
 
 		drawButton(fg, hostButton.x, hostButton.y, hostButton.width, hostButton.height, "Host a game", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
 		drawButton(fg, joinButton.x, joinButton.y, joinButton.width, joinButton.height, "Join a game", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
@@ -145,6 +150,7 @@ object Motor extends App {
 					if (isHost && serverSocket != null && !serverSocket.isClosed) serverSocket.close()
 					if (!isHost && clientSocket != null && !clientSocket.isClosed) clientSocket.close()
 
+					Thread.sleep(100)
 					displayMenu("Welcome Bomber!")
 					return
 				}
