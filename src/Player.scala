@@ -2,7 +2,7 @@ class Player(val playerId: Int, var life: Int = 100, var lastDropped: Long = 0) 
   private var x: Int = 0
   private var y: Int = 0
 
-  private val cooldown = 5000
+  private val cooldown = 7500
 
   def getPos: (Int, Int) = (x, y)
 
