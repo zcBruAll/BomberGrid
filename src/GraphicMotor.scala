@@ -7,7 +7,7 @@ object GraphicMotor {
 	private val defaultColor = Color.BLACK
 
 	/**
-	 * Render the game with FunGraphics
+	 * Render the game with FunGraphics *
 	 */
 	def displayGame(fg: FunGraphics, room: Room, cellSize: Int, playerDiameter: Int): Unit = {
 		fg.frontBuffer.synchronized {
