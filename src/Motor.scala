@@ -2,7 +2,7 @@ import GraphicMotor._
 import hevs.graphics.FunGraphics
 import hevs.graphics.utils.GraphicsBitmap
 
-import java.awt.event.{KeyAdapter, KeyEvent, MouseAdapter, MouseEvent}
+import java.awt.event.{KeyAdapter, KeyEvent, MouseAdapter, MouseEvent, MouseMotionAdapter}
 import java.awt.{Color, Font, Rectangle}
 import java.io.{BufferedReader, InputStreamReader, PrintWriter}
 import java.net.{ServerSocket, Socket}
@@ -18,6 +18,7 @@ object Motor extends App {
 		"^((25[0-5]|2[0-4]\\d|1\\d{2}|\\d{1,2})\\.){3}(25[0-5]|2[0-4]\\d|1\\d{2}|\\d{1,2})$".r
 	val ipChars: Array[String] =
 		Array(".").concat(Array.range(0, 10).map(_.toString))
+	var hostIp = ""
 
 	// Front-end variables
 	val cellSize = 40
@@ -25,28 +26,148 @@ object Motor extends App {
 	val fg: FunGraphics =
 		new FunGraphics(50 + cellSize * 20, 50 + cellSize * 15, "BomberGrid")
 	val menuWidth = 300
-	val bombImg = new GraphicsBitmap("/res/img/bomb.png")
-	val planeImg = new GraphicsBitmap("/res/img/plane.png")
-	val player1Img = new GraphicsBitmap("/res/img/p1.png")
-	val player2Img = new GraphicsBitmap("/res/img/p2.png")
 	var in: BufferedReader = _
 	var out: PrintWriter = _
 	var serverSocket: ServerSocket = _
 	var clientSocket: Socket = _
 	var isHost = true
-	var hostIP = ""
+	var pageId = 1
+
+	// Graphic variables
+	var menuTitle = "Welcome Bomber!"
+	var clientTitle = "Enter host IP:"
+	var hostTitle = "Hosting on:"
+	var hostSubtitle = "Waiting for a client to connect"
+	var hostButtonText = "Host a game"
+	var clientButtonText = "Join a game"
+	var quitButtonText = "Quit"
+	var hostingIp = ""
+
+	var buttonColor = new Color(0, 145, 51)
+	var hoverButtonColor = new Color(8, 99, 40)
+
+	val fontTitle = new Font("SansSerif", Font.BOLD, 36)
+	val fontText = new Font("SansSerif", Font.PLAIN, 24)
+	val fontImportant = new Font("SansSerif", Font.BOLD, 24)
+	val fontSubtitle = new Font("SansSerif", Font.PLAIN, 18)
+
+	val bombImg = new GraphicsBitmap("/res/img/bomb.png")
+	val planeImg = new GraphicsBitmap("/res/img/plane.png")
+	val player1Img = new GraphicsBitmap("/res/img/p1.png")
+	val player2Img = new GraphicsBitmap("/res/img/p2.png")
+
+	val hostButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 15, 300, 50)
+	val joinButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 90, 300, 50)
+	val exitButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 165, 300, 50)
+	var hostButtonColor = buttonColor
+	var joinButtonColor = buttonColor
+	var quitButtonColor = buttonColor
+
 	// Game variables
 	var room: Room = _
 	var isPlaying = true
 	var gameInitialized = false
 
 	// Listener
-	var mainMenuMouseListener: MouseAdapter = _
-	var ipKeyListener: KeyAdapter = _
-	var gameKeyListener: KeyAdapter = _
+	val mainMenuMouseListener: MouseAdapter = new MouseAdapter {
+		override def mouseClicked(e: MouseEvent): Unit = {
+			val x = e.getX
+			val y = e.getY
+
+			fg.mainFrame.getContentPane.removeMouseListener(mainMenuMouseListener)
+			fg.mainFrame.getContentPane.removeMouseMotionListener(mainMenuMouseMotionListener)
+
+			if (hostButton.contains(x, y)) {
+				pageId = 2
+				startHost()
+			} else if (joinButton.contains(x, y)) {
+				fg.mainFrame.addKeyListener(clientKeyListener)
+				pageId = 3
+				startClient()
+			} else if (exitButton.contains(x, y))
+				quit()
+		}
+	}
+	val mainMenuMouseMotionListener: MouseMotionAdapter = new MouseMotionAdapter {
+		override def mouseMoved(e: MouseEvent): Unit = {
+			val x = e.getX
+			val y = e.getY
+
+			if (hostButton.contains(x, y)) {
+				hostButtonColor = hoverButtonColor
+				joinButtonColor = buttonColor
+				quitButtonColor = buttonColor
+			} else if (joinButton.contains(x, y)) {
+				hostButtonColor = buttonColor
+				joinButtonColor = hoverButtonColor
+				quitButtonColor = buttonColor
+			} else if (exitButton.contains(x, y)) {
+				hostButtonColor = buttonColor
+				joinButtonColor = buttonColor
+				quitButtonColor = hoverButtonColor
+			} else {
+				hostButtonColor = buttonColor
+				joinButtonColor = buttonColor
+				quitButtonColor = buttonColor
+			}
+		}
+	}
+	val clientKeyListener = new KeyAdapter {
+		override def keyPressed(e: KeyEvent): Unit = {
+			if (ipChars.contains(e.getKeyChar.toString)) {
+				hostIp += e.getKeyChar
+			}
+
+			if (e.getKeyCode == KeyEvent.VK_BACK_SPACE) {
+				hostIp = hostIp.substring(0, math.max(hostIp.length - 1, 0))
+			}
+
+			if (e.getKeyCode == KeyEvent.VK_ENTER) {
+				if (!ipRegex.matches(hostIp)) return
+
+				clientTitle = "Connecting..."
+				connectTo(hostIp)
+			}
+		}
+	}
+	val gameKeyListener = new KeyAdapter {
+		override def keyPressed(e: KeyEvent): Unit = {
+			if (isPlaying) {
+				val keyToMove = Map(
+					'w' -> 1,
+					'd' -> 2,
+					's' -> 4,
+					'a' -> 8
+				)
+
+				val moveToVerify = keyToMove.getOrElse(e.getKeyChar, 0)
+
+				if (moveToVerify != 0) {
+					val player = room.getPlayer(if (isHost) 1 else 2)
+					val move = room.tryMove(player, moveToVerify)
+					if (move._1)
+						send(s"UPDTMOVE${player.playerId};${move._2}:${move._3}")
+				}
+
+				if (e.getKeyCode == KeyEvent.VK_SPACE) {
+					val player = room.getPlayer(if (isHost) 1 else 2)
+					if (player.canDrop) {
+						val pos = player.getPos
+						val timestamp = System.currentTimeMillis()
+						player.lastDropped = timestamp
+						val bomb = Bomb(pos._1, pos._2, timestamp)
+
+						room.addBomb(bomb)
+
+						send(s"UPDTDROP${pos._1}:${pos._2};$timestamp")
+					}
+				}
+			}
+		}
+	}
 
 	Runtime.getRuntime.addShutdownHook(new Thread(() => {
-		if (isHost && serverSocket != null && !serverSocket.isClosed) {
+		if (isHost && serverSocket != null && !serverSocket.isClosed && clientSocket != null && !clientSocket.isClosed) {
 			send("EXIT")
 			serverSocket.close()
 		} else if (!isHost && clientSocket != null && !clientSocket.isClosed) {
@@ -55,65 +176,41 @@ object Motor extends App {
 		}
 	}))
 
-	displayMenu("Welcome Bomber!")
+	fg.mainFrame.getContentPane.addMouseListener(mainMenuMouseListener)
+	fg.mainFrame.getContentPane.addMouseMotionListener(mainMenuMouseMotionListener)
 
-	def displayMenu(t: String): Unit = {
-		val hostButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 15, 300, 50)
-		val joinButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 90, 300, 50)
-		val exitButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 165, 300, 50)
+	Future {
+		while (true) {
+			if (pageId == 4)
+				room.checkExplosions()
 
-		fg.clear()
-
-		mainMenuMouseListener = new MouseAdapter {
-			override def mouseClicked(e: MouseEvent): Unit = {
-				val x = e.getX
-				val y = e.getY
-
-				if (hostButton.contains(x, y))
-					startHost()
-				else if (joinButton.contains(x, y))
-					startClient()
-				else if (exitButton.contains(x, y))
-					quit()
+			fg.frontBuffer.synchronized {
+				displayPage()
 			}
+
+			fg.syncGameLogic(60)
 		}
+	}
 
-		fg.mainFrame.getContentPane.addMouseListener(mainMenuMouseListener)
-
-		val fontTitle = new Font("SansSerif", Font.BOLD, 36)
-		val fontText = new Font("SansSerif", Font.BOLD, 24)
-
+	def displayMenu(): Unit = {
 		fg.drawTransformedPicture(fg.width / 2, -25 + planeImg.getHeight / 2, 0, 1, planeImg)
 
-		drawCenteredString(fg, t, (fg.width - menuWidth) / 2, planeImg.getHeight - 60, 300, 50, fontTitle)
+		drawCenteredString(fg, menuTitle, (fg.width - menuWidth) / 2, planeImg.getHeight - 60, 300, 50, fontTitle)
 
-		drawButton(fg, hostButton.x, hostButton.y, hostButton.width, hostButton.height, "Host a game", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
-		drawButton(fg, joinButton.x, joinButton.y, joinButton.width, joinButton.height, "Join a game", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
-		drawButton(fg, exitButton.x, exitButton.y, exitButton.width, exitButton.height, "Quit", Color.CYAN, Color.BLACK, 2, Color.BLACK, fontText)
+		drawButton(fg, hostButton.x, hostButton.y, hostButton.width, hostButton.height, hostButtonText, hostButtonColor, Color.BLACK, 3, Color.BLACK, 10, fontText)
+		drawButton(fg, joinButton.x, joinButton.y, joinButton.width, joinButton.height, clientButtonText, joinButtonColor, Color.BLACK, 3, Color.BLACK, 10, fontText)
+		drawButton(fg, exitButton.x, exitButton.y, exitButton.width, exitButton.height, quitButtonText, quitButtonColor, Color.BLACK, 3, Color.BLACK, 10, fontText)
 	}
 
 	/**
 	 * Start the game setup and loop as the host (Player1)
 	 */
 	def startHost(): Unit = {
-		fg.mainFrame.getContentPane.removeMouseListener(mainMenuMouseListener)
-
 		isHost = true
 		serverSocket = new ServerSocket(port)
-		val localIp = java.net.InetAddress.getLocalHost.getHostAddress
-
-		fg.clear()
-
-		val fontTitle = new Font("SansSerif", Font.PLAIN, 24)
-		val fontIp = new Font("SansSerif", Font.BOLD, 24)
-		val fontSubtitle = new Font("SansSerif", Font.PLAIN, 18)
-
-		drawCenteredString(fg, "Hosting on:", (fg.width - menuWidth) / 2, fg.height / 2 - 45, 300, 24, fontTitle)
-		drawCenteredString(fg, s"$localIp", (fg.width - menuWidth) / 2, fg.height / 2 - 15, 300, 24, fontIp)
-		drawCenteredString(fg, "Waiting for a client", (fg.width - menuWidth) / 2, fg.height / 2 + 15, 300, 18, fontSubtitle)
+		hostingIp = java.net.InetAddress.getLocalHost.getHostAddress
 
 		clientSocket = serverSocket.accept()
-		println("Client connected")
 
 		initCommunication()
 
@@ -142,16 +239,15 @@ object Motor extends App {
 						serverSocket.close()
 					else
 						clientSocket.close()
-					isPlaying = false
 					gameInitialized = false
-					fg.mainFrame.removeKeyListener(ipKeyListener)
+					pageId = 1
+					fg.mainFrame.removeKeyListener(clientKeyListener)
 					fg.mainFrame.removeKeyListener(gameKeyListener)
+					fg.mainFrame.getContentPane.addMouseListener(mainMenuMouseListener)
+					fg.mainFrame.getContentPane.addMouseMotionListener(mainMenuMouseMotionListener)
 
 					if (isHost && serverSocket != null && !serverSocket.isClosed) serverSocket.close()
 					if (!isHost && clientSocket != null && !clientSocket.isClosed) clientSocket.close()
-
-					Thread.sleep(100)
-					displayMenu("Welcome Bomber!")
 					return
 				}
 				println(s"Received: $msg")
@@ -206,9 +302,14 @@ object Motor extends App {
 			val winnerId = msg.substring(3)
 			isPlaying = false
 			gameInitialized = false
-			fg.mainFrame.removeKeyListener(gameKeyListener)
 
-			displayMenu(s"Player $winnerId WON!")
+			menuTitle = s"Player $winnerId WON!"
+
+			fg.mainFrame.removeKeyListener(gameKeyListener)
+			fg.mainFrame.removeKeyListener(clientKeyListener)
+			fg.mainFrame.getContentPane.addMouseListener(mainMenuMouseListener)
+			fg.mainFrame.getContentPane.addMouseMotionListener(mainMenuMouseMotionListener)
+			pageId = 1
 
 			if (isHost) {
 				if (serverSocket != null && !serverSocket.isClosed) serverSocket.close()
@@ -236,103 +337,43 @@ object Motor extends App {
 	 * Start the game loop
 	 */
 	def startGame(): Unit = {
-		isPlaying = true
-
-		fg.clear()
-
-		fg.mainFrame.removeKeyListener(ipKeyListener)
-
-		gameKeyListener = new KeyAdapter {
-			override def keyPressed(e: KeyEvent): Unit = {
-				if (isPlaying) {
-					val keyToMove = Map(
-						'w' -> 1,
-						'd' -> 2,
-						's' -> 4,
-						'a' -> 8
-					)
-
-					val moveToVerify = keyToMove.getOrElse(e.getKeyChar, 0)
-
-					if (moveToVerify != 0) {
-						val player = room.getPlayer(if (isHost) 1 else 2)
-						val move = room.tryMove(player, moveToVerify)
-						if (move._1)
-							send(s"UPDTMOVE${player.playerId};${move._2}:${move._3}")
-					}
-
-					if (e.getKeyCode == KeyEvent.VK_SPACE) {
-						val player = room.getPlayer(if (isHost) 1 else 2)
-						if (player.canDrop) {
-							val pos = player.getPos
-							val timestamp = System.currentTimeMillis()
-							val bomb = Bomb(pos._1, pos._2, timestamp)
-
-							room.addBomb(bomb)
-
-							send(s"UPDTDROP${pos._1}:${pos._2};$timestamp")
-						}
-					}
-				}
-			}
-		}
-
 		fg.mainFrame.addKeyListener(gameKeyListener)
+		fg.mainFrame.removeKeyListener(clientKeyListener)
+		pageId = 4
+	}
 
-		Future {
-			while (isPlaying) {
-				room.checkExplosions()
-
-				if (isPlaying)
-					displayGame(fg, room, cellSize, diameter)
-
-				fg.syncGameLogic(60)
-			}
+	private def displayPage(): Unit = {
+		fg.clear
+		pageId match {
+			case 1 =>
+				displayMenu()
+			case 2 =>
+				displayHost()
+			case 3 =>
+				displayClient()
+			case 4 =>
+				displayGame(fg, room, cellSize, diameter)
 		}
+	}
+
+	private def displayHost(): Unit = {
+		drawCenteredString(fg, hostTitle, (fg.width - menuWidth) / 2, fg.height / 2 - 45, 300, 24, fontText)
+		drawCenteredString(fg, hostingIp, (fg.width - menuWidth) / 2, fg.height / 2 - 15, 300, 24, fontImportant)
+		drawCenteredString(fg, hostSubtitle, (fg.width - menuWidth) / 2, fg.height / 2 + 15, 300, 18, fontSubtitle)
+	}
+
+	private def displayClient(): Unit = {
+		drawCenteredString(fg, clientTitle, (fg.width - menuWidth) / 2, fg.height / 2 - 85, 300, 30, fontText)
+		drawTextbox(fg, (fg.width - menuWidth) / 2, fg.height / 2 - 25, 300, 50, s"$hostIp", Color.WHITE, Color.BLACK, 2, Color.BLACK, fontText)
 	}
 
 	/**
 	 * Start the game setup and loop as the client (Player 2)
 	 */
 	def startClient(): Unit = {
-		fg.mainFrame.getContentPane.removeMouseListener(mainMenuMouseListener)
-
-		ipKeyListener = new KeyAdapter {
-			override def keyPressed(e: KeyEvent): Unit = {
-				if (ipChars.contains(e.getKeyChar.toString)) {
-					hostIP += e.getKeyChar
-					drawClientMenu("Enter the host IP")
-				}
-
-				if (e.getKeyCode == KeyEvent.VK_BACK_SPACE) {
-					hostIP = hostIP.substring(0, math.max(hostIP.length - 1, 0))
-					drawClientMenu("Enter the host IP")
-				}
-
-				if (e.getKeyCode == KeyEvent.VK_ENTER) {
-					if (!ipRegex.matches(hostIP)) return
-
-					drawClientMenu("Connecting...")
-					connectTo(hostIP)
-				}
-			}
-		}
-
-		fg.mainFrame.addKeyListener(ipKeyListener)
-
 		isHost = false
 
-		fg.clear()
-
-		drawClientMenu("Enter the host IP")
-	}
-
-	def drawClientMenu(t: String): Unit = {
-		fg.clear()
-
-		val fontInstruction = new Font("SansSerif", Font.PLAIN, 24)
-		drawCenteredString(fg, t, (fg.width - menuWidth) / 2, fg.height / 2 - 85, 300, 30, fontInstruction)
-		drawTextbox(fg, (fg.width - menuWidth) / 2, fg.height / 2 - 25, 300, 50, s"$hostIP", Color.WHITE, Color.BLACK, 2, Color.BLACK, fontInstruction)
+		clientTitle = "Enter host IP:"
 	}
 
 	def quit(): Unit = {
@@ -359,9 +400,14 @@ object Motor extends App {
 		send(f"WIN$winnerId")
 		isPlaying = false
 		gameInitialized = false
-		fg.mainFrame.removeKeyListener(gameKeyListener)
 
-		displayMenu(s"Player $winnerId WON!")
+		menuTitle = s"Player $winnerId WON!"
+
+		pageId = 1
+		fg.mainFrame.removeKeyListener(clientKeyListener)
+		fg.mainFrame.removeKeyListener(gameKeyListener)
+		fg.mainFrame.getContentPane.addMouseListener(mainMenuMouseListener)
+		fg.mainFrame.getContentPane.addMouseMotionListener(mainMenuMouseMotionListener)
 
 		if (isHost) {
 			if (serverSocket != null && !serverSocket.isClosed) serverSocket.close()
