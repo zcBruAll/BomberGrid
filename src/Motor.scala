@@ -24,7 +24,7 @@ object Motor extends App {
 	val cellSize = 40
 	val diameter = (cellSize / 1.5).floor.toInt
 	val fg: FunGraphics =
-		new FunGraphics(50 + cellSize * 20, 50 + cellSize * 15, "BomberGrid")
+		new FunGraphics(50 + cellSize * 20, 70 + cellSize * 15, "BomberGrid")
 	val menuWidth = 300
 	var in: BufferedReader = _
 	var out: PrintWriter = _

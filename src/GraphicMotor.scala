@@ -14,7 +14,7 @@ object GraphicMotor {
 		for (i <- 0 until room.width;
 				 j <- 0 until room.height) {
 			val x = 25 + cellSize * i
-			val y = 25 + cellSize * j
+			val y = 45 + cellSize * j
 
 			fg.setColor(Color.BLACK)
 			val walls = room.getRoom(i)(j).getWalls
@@ -30,7 +30,7 @@ object GraphicMotor {
 
 		room.getActiveBombs.foreach { bomb =>
 			val x = 25 + bomb.x * cellSize + cellSize / 4
-			val y = 25 + bomb.y * cellSize + cellSize / 4
+			val y = 45 + bomb.y * cellSize + cellSize / 4
 			fg.setColor(Color.RED)
 
 			val bombSize = Motor.bombImg.getWidth
@@ -42,17 +42,24 @@ object GraphicMotor {
 		val posP1 = room.getPlayer(1).getPos
 		val p1Size = Motor.player1Img.getHeight
 		val p1Scale = cellSize / p1Size.toDouble
-		fg.drawTransformedPicture(50 + posP1._1 * cellSize + (cellSize - (p1Size * p1Scale).toInt) / 2, 50 + posP1._2 * cellSize + (cellSize - (p1Size * p1Scale).toInt) / 2, 0, p1Scale, Motor.player1Img)
+		fg.drawTransformedPicture(50 + posP1._1 * cellSize + (cellSize - (p1Size * p1Scale).toInt) / 2, 65 + posP1._2 * cellSize + (cellSize - (p1Size * p1Scale).toInt) / 2, 0, p1Scale, Motor.player1Img)
 
 		val posP2 = room.getPlayer(2).getPos
 		val p2Size = Motor.player1Img.getHeight
 		val p2Scale = cellSize / p1Size.toDouble
-		fg.drawTransformedPicture(50 + posP2._1 * cellSize + (cellSize - (p2Size * p2Scale).toInt) / 2, 50 + posP2._2 * cellSize + (cellSize - (p2Size * p2Scale).toInt) / 2, 0, p2Scale, Motor.player2Img)
+		fg.drawTransformedPicture(50 + posP2._1 * cellSize + (cellSize - (p2Size * p2Scale).toInt) / 2, 65 + posP2._2 * cellSize + (cellSize - (p2Size * p2Scale).toInt) / 2, 0, p2Scale, Motor.player2Img)
 
 		val player = room.getPlayer(playerId)
 		val lifePercent = player.life
-		drawRectangle(fg, 25 + room.width * cellSize - 100 - 10 - 4, 25 + 10 + 4, 100 + 4, 10, Color.WHITE, 2, Color.BLACK, (Color.LIGHT_GRAY, Color.LIGHT_GRAY, Color.LIGHT_GRAY, Color.LIGHT_GRAY), (5, 5, 5, 5))
-		drawRectangle(fg, 25 + room.width * cellSize - 100 - 10 - 2, 25 + 10 + 6, lifePercent, 6, if (lifePercent > 75) Color.GREEN else if (lifePercent > 25) Color.ORANGE else Color.RED, 0, Color.BLACK, if (lifePercent == 100) (Color.BLACK, Color.BLACK, Color.BLACK, Color.BLACK) else (Color.BLACK, Color.WHITE, Color.BLACK, Color.WHITE), (3, 3, 3, 3))
+		drawRectangle(fg, fg.width - 25 - 100 - 4, 45 - 15, 100 + 4, 10, Color.WHITE, 2, Color.BLACK, (Color.LIGHT_GRAY, Color.LIGHT_GRAY, Color.LIGHT_GRAY, Color.LIGHT_GRAY), (5, 5, 5, 5))
+		drawRectangle(fg, fg.width - 25 - 100 - 2, 45 - 15 + 2, lifePercent, 6, if (lifePercent > 75) Color.GREEN else if (lifePercent > 25) Color.ORANGE else Color.RED, 0, Color.BLACK, if (lifePercent == 100) (Color.BLACK, Color.BLACK, Color.BLACK, Color.BLACK) else (Color.BLACK, Color.WHITE, Color.BLACK, Color.WHITE), (3, 3, 3, 3))
+
+		val nextDrop = player.cooldown - (System.currentTimeMillis() - player.lastDropped)
+		val seconds: Int = math.max((nextDrop / 1000).toInt, 0)
+		val milliseconds: Int = math.max((nextDrop % 1000).toInt, 0)
+		val text = f"$seconds:$milliseconds%03d"
+		val textSize = fg.getStringSize(text, Motor.fontSubtitle)
+		fg.drawString(fg.width - 25 - textSize.getWidth.toInt, 45 - 10 - 10, text, Motor.fontSubtitle, Color.BLACK)
 	}
 
 	def drawRectangle(fg: FunGraphics, x: Int, y: Int, width: Int, height: Int, background: Color, borderWidth: Int = 1, borderColor: Color = Color.WHITE, borderBackgroundColor: (Color, Color, Color, Color) = (Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE), borderRadius: (Int, Int, Int, Int) = (0, 0, 0, 0)): Unit = {
