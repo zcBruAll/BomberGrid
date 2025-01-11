@@ -352,7 +352,7 @@ object Motor extends App {
 			case 3 =>
 				displayClient()
 			case 4 =>
-				displayGame(fg, room, cellSize, diameter)
+				displayGame(fg, room, cellSize, if (isHost) 1 else 2)
 		}
 	}
 
