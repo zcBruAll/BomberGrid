@@ -32,16 +32,16 @@ object GraphicMotor {
 			fg.setColor(Color.BLACK)
 			val walls = room.getRoom(i)(j).getWalls
 			if ((walls & 1) != 0) { // Upper wall
-				fg.drawFillRect(x, y, cellSize, 4)
+				fg.drawFillRect(x, y, cellSize, 2)
 			}
 			if ((walls & 2) != 0) { // Right wall
-				fg.drawFillRect(x + cellSize, y, 4, cellSize)
+				fg.drawFillRect(x + cellSize - 2, y, 2, cellSize)
 			}
 			if ((walls & 4) != 0) { // Bottom wall
-				fg.drawFillRect(x, y + cellSize, cellSize, 4)
+				fg.drawFillRect(x, y + cellSize - 2, cellSize, 2)
 			}
 			if ((walls & 8) != 0) { // Left wall
-				fg.drawFillRect(x, y, 4, cellSize)
+				fg.drawFillRect(x, y, 2, cellSize)
 			}
 		}
 
