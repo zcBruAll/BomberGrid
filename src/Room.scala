@@ -75,6 +75,16 @@ class Room(val width: Int, val height: Int) {
       player2.takeDmg(25 * math.max(3 - distP2, 0))
   }
 
+  def buildWalls(x: Int, y: Int, wall: Int): Unit = {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+      room(x)(y).buildWalls(wall)
+      if (x > 0 && (wall & 8) != 0) room(x-1)(y).buildWalls(2)
+      if (x < width-1 && (wall & 2) != 0) room(x+1)(y).buildWalls(8)
+      if (y > 0 && (wall & 1) != 0) room(x)(y-1).buildWalls(4)
+      if (y < height-1 && (wall & 4) != 0) room(x)(y+1).buildWalls(1)
+    }
+  }
+
   def isWallObstructingBresenham(x0: Int, y0: Int, x1: Int, y1: Int): Boolean = {
     var x = x0
     var y = y0
@@ -139,9 +149,44 @@ class Room(val width: Int, val height: Int) {
         room(i)(j).buildWalls(4)
     }
 
-    for (i <- 0 until room.length - 1 by 2) {
-      room(i)(5).buildWalls(2)
-      room(i+1)(5).buildWalls(8)
+    for (i <- 0 until width by 3;
+         j <- 0 until height by 4) {
+      (math.random() * 5).floor.toInt match {
+        case 0 => generateChair(i, j)
+        case 1 => generateL(i, j)
+        case 2 => generateReverseL(i, j)
+        case 3 => generateSan(i, j)
+        case 4 => generatePillar(i, j)
+      }
+    }
+
+    def generateChair(x: Int, y: Int): Unit = {
+      buildWalls(x+1, y+1, 12)
+      buildWalls(x+1, y+2, 11)
+    }
+
+    def generateL(x: Int, y: Int): Unit = {
+      buildWalls(x, y+1, 5)
+      buildWalls(x+1, y+1, 3)
+      buildWalls(x+1, y+2, 10)
+      buildWalls(x+1, y+3, 10)
+    }
+
+    def generateReverseL(x: Int, y: Int): Unit = {
+      buildWalls(x+1, y, 10)
+      buildWalls(x+1, y+1, 10)
+      buildWalls(x+1, y+2, 12)
+      buildWalls(x+2, y+2, 5)
+    }
+
+    def generateSan(x: Int, y: Int): Unit = {
+      buildWalls(x+1, y+1, 5)
+      buildWalls(x+1, y+2, 5)
+    }
+
+    def generatePillar(x: Int, y: Int): Unit = {
+      buildWalls(x+1, y+1, 10)
+      buildWalls(x+1, y+2, 10)
     }
   }
 
