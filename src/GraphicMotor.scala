@@ -1,5 +1,7 @@
 import hevs.graphics.FunGraphics
+import hevs.graphics.utils.GraphicsBitmap
 
+import java.awt.image.{BufferedImage, RescaleOp}
 import java.awt.{Color, Font}
 
 object GraphicMotor {
@@ -11,45 +13,58 @@ object GraphicMotor {
 	 */
 	def displayGame(fg: FunGraphics, room: Room, cellSize: Int, playerId: Int): Unit = {
 		fg.clear(Color.LIGHT_GRAY)
+		val player = room.getPlayer(playerId)
+		val posP = player.getPos
+
 		for (i <- 0 until room.width;
 				 j <- 0 until room.height) {
 			val x = 25 + cellSize * i
 			val y = 45 + cellSize * j
 
+			val distCell = math.sqrt(math.pow(posP._1 - i, 2) + math.pow(posP._2 - j, 2)).toInt
+			if (distCell < 4 && !room.isWallObstructingBresenham(posP._1, posP._2, i, j)) {
+				fg.drawTransformedPicture(x + cellSize / 2, y + cellSize / 2, 0, cellSize / Motor.dirtImg(4 - distCell).getHeight, Motor.dirtImg(4 - distCell))
+			} else {
+				fg.setColor(Color.BLACK)
+				fg.drawFillRect(x, y, cellSize, cellSize)
+			}
+
 			fg.setColor(Color.BLACK)
 			val walls = room.getRoom(i)(j).getWalls
-			if ((walls & 1) != 0) // Upper wall
-				fg.drawLine(x, y, x + cellSize, y)
-			if ((walls & 2) != 0) // Right wall
-				fg.drawLine(x + cellSize, y, x + cellSize, y + cellSize)
-			if ((walls & 4) != 0) // Bottom wall
-				fg.drawLine(x, y + cellSize, x + cellSize, y + cellSize)
-			if ((walls & 8) != 0) // Left wall
-				fg.drawLine(x, y, x, y + cellSize)
+			if ((walls & 1) != 0) { // Upper wall
+				fg.drawFillRect(x, y, cellSize, 4)
+			}
+			if ((walls & 2) != 0) { // Right wall
+				fg.drawFillRect(x + cellSize, y, 4, cellSize)
+			}
+			if ((walls & 4) != 0) { // Bottom wall
+				fg.drawFillRect(x, y + cellSize, cellSize, 4)
+			}
+			if ((walls & 8) != 0) { // Left wall
+				fg.drawFillRect(x, y, 4, cellSize)
+			}
 		}
 
 		room.getActiveBombs.foreach { bomb =>
-			val x = 25 + bomb.x * cellSize + cellSize / 4
-			val y = 45 + bomb.y * cellSize + cellSize / 4
-			fg.setColor(Color.RED)
+			val x = 25 + bomb.x * cellSize
+			val y = 45 + bomb.y * cellSize
 
-			val bombSize = Motor.bombImg.getWidth
-			val scale = (cellSize * .75D) / bombSize
-			val ds = ((bombSize * scale) / 3).toInt
-			fg.drawTransformedPicture(x + ds, y + ds, 0, scale, Motor.bombImg)
+			val distCell = math.sqrt(math.pow(posP._1 - bomb.x, 2) + math.pow(posP._2 - bomb.y, 2)).toInt
+			if (distCell < 4 && !room.isWallObstructingBresenham(posP._1, posP._2, bomb.x, bomb.y)) {
+				fg.drawTransformedPicture(x + cellSize / 2, y + cellSize / 2, 0, cellSize / Motor.bombImg(4 - distCell).getHeight, Motor.bombImg(4 - distCell))
+			}
 		}
 
-		val posP1 = room.getPlayer(1).getPos
-		val p1Size = Motor.player1Img.getHeight
-		val p1Scale = cellSize / p1Size.toDouble
-		fg.drawTransformedPicture(50 + posP1._1 * cellSize + (cellSize - (p1Size * p1Scale).toInt) / 2, 65 + posP1._2 * cellSize + (cellSize - (p1Size * p1Scale).toInt) / 2, 0, p1Scale, Motor.player1Img)
+		for (i <- 1 to 2) {
+			val pos = room.getPlayer(i).getPos
+			val x = 25 + pos._1 * cellSize
+			val y = 45 + pos._2 * cellSize
+			val distCellP = math.sqrt(math.pow(posP._1 - pos._1, 2) + math.pow(posP._2 - pos._2, 2)).toInt
+			if (distCellP < 4 && !room.isWallObstructingBresenham(posP._1, posP._2, pos._1, pos._2)) {
+				fg.drawTransformedPicture(x + cellSize / 2, y + cellSize / 2, 0, cellSize / (if (i == 1) Motor.player1Img else Motor.player2Img)(4 - distCellP).getHeight, (if (i == 1) Motor.player1Img else Motor.player2Img)(4 - distCellP))
+			}
+		}
 
-		val posP2 = room.getPlayer(2).getPos
-		val p2Size = Motor.player1Img.getHeight
-		val p2Scale = cellSize / p1Size.toDouble
-		fg.drawTransformedPicture(50 + posP2._1 * cellSize + (cellSize - (p2Size * p2Scale).toInt) / 2, 65 + posP2._2 * cellSize + (cellSize - (p2Size * p2Scale).toInt) / 2, 0, p2Scale, Motor.player2Img)
-
-		val player = room.getPlayer(playerId)
 		val lifePercent = player.life
 		drawRectangle(fg, fg.width - 25 - 100 - 4, 45 - 15, 100 + 4, 10, Color.WHITE, 2, Color.BLACK, (Color.LIGHT_GRAY, Color.LIGHT_GRAY, Color.LIGHT_GRAY, Color.LIGHT_GRAY), (5, 5, 5, 5))
 		drawRectangle(fg, fg.width - 25 - 100 - 2, 45 - 15 + 2, lifePercent, 6, if (lifePercent > 75) Color.GREEN else if (lifePercent > 25) Color.ORANGE else Color.RED, 0, Color.BLACK, if (lifePercent == 100) (Color.BLACK, Color.BLACK, Color.BLACK, Color.BLACK) else (Color.BLACK, Color.WHITE, Color.BLACK, Color.WHITE), (3, 3, 3, 3))
@@ -128,5 +143,20 @@ object GraphicMotor {
 
 		val dy = height - ((height - fg.getStringSize(t, font).getHeight.toInt) / 2) - 4
 		fg.drawString(x + 10, y + dy, t, font, foreground)
+	}
+
+	def computeImgByLuminosity(path: String, maxLevel: Int = 4): Array[GraphicsBitmap] = {
+		val mainImg = new GraphicsBitmap(path)
+		val imgArray: Array[GraphicsBitmap] = Array.fill(maxLevel+1)(new GraphicsBitmap(path))
+		for (i <- 1 to maxLevel+1) {
+			val scale = .5f + (i - 2.5f) / 2.5f
+			val filteredImg = new BufferedImage(mainImg.mBitmap.getWidth, mainImg.mBitmap.getHeight, mainImg.mBitmap.getType)
+
+			val rescaleOp = new RescaleOp(scale, 0f, null)
+			rescaleOp.filter(mainImg.mBitmap, filteredImg)
+
+			imgArray(i-1).mBitmap = filteredImg
+		}
+		imgArray
 	}
 }

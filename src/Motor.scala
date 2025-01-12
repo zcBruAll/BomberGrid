@@ -22,7 +22,6 @@ object Motor extends App {
 
 	// Front-end variables
 	val cellSize = 40
-	val diameter = (cellSize / 1.5).floor.toInt
 	val fg: FunGraphics =
 		new FunGraphics(50 + cellSize * 20, 70 + cellSize * 15, "BomberGrid")
 	val menuWidth = 300
@@ -32,6 +31,7 @@ object Motor extends App {
 	var clientSocket: Socket = _
 	var isHost = true
 	var pageId = 1
+	drawCenteredString(fg, "Loading game", 0, 0, fg.width, fg.height)
 
 	// Graphic variables
 	var menuTitle = "Welcome Bomber!"
@@ -51,10 +51,11 @@ object Motor extends App {
 	val fontImportant = new Font("SansSerif", Font.BOLD, 24)
 	val fontSubtitle = new Font("SansSerif", Font.PLAIN, 18)
 
-	val bombImg = new GraphicsBitmap("/res/img/bomb.png")
+	val bombImg = computeImgByLuminosity("/res/img/bomb.png")
 	val planeImg = new GraphicsBitmap("/res/img/plane.png")
-	val player1Img = new GraphicsBitmap("/res/img/p1.png")
-	val player2Img = new GraphicsBitmap("/res/img/p2.png")
+	val player1Img = computeImgByLuminosity("/res/img/p1.png")
+	val player2Img = computeImgByLuminosity("/res/img/p2.png")
+	val dirtImg = computeImgByLuminosity("/res/img/dirt.png")
 
 	val hostButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 15, 300, 50)
 	val joinButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 90, 300, 50)
@@ -325,8 +326,8 @@ object Motor extends App {
 		room = new Room(20, 15)
 		room.generateRoom()
 
-		room.movePlayer(room.getPlayer(1), 0, 0)
-		room.movePlayer(room.getPlayer(2), 14, 14)
+		room.movePlayer(room.getPlayer(1), 5, 6)
+		room.movePlayer(room.getPlayer(2), 19, 14)
 
 		send(s"INIT${room.toString}")
 

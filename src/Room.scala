@@ -69,8 +69,61 @@ class Room(val width: Int, val height: Int) {
     val distP1 = math.sqrt(math.pow(b.x - p1Pos._1, 2) + math.pow(b.y - p1Pos._2, 2)).floor.toInt
     val distP2 = math.sqrt(math.pow(b.x - p2Pos._1, 2) + math.pow(b.y - p2Pos._2, 2)).floor.toInt
 
-    player1.takeDmg(25 * math.max(3 - distP1, 0))
-    player2.takeDmg(25 * math.max(3 - distP2, 0))
+    if (!isWallObstructingBresenham(p1Pos._1, p1Pos._2, b.x, b.y))
+      player1.takeDmg(25 * math.max(3 - distP1, 0))
+    if (!isWallObstructingBresenham(p2Pos._1, p2Pos._2, b.x, b.y))
+      player2.takeDmg(25 * math.max(3 - distP2, 0))
+  }
+
+  def isWallObstructingBresenham(x0: Int, y0: Int, x1: Int, y1: Int): Boolean = {
+    var x = x0
+    var y = y0
+
+    val dx = math.abs(x1 - x0)
+    val dy = math.abs(y1 - y0)
+
+    val sx = if (x0 < x1) 1 else -1
+    val sy = if (y0 < y1) 1 else -1
+
+    var err = dx - dy
+
+    while (x != x1 || y != y1) {
+      val currentCellWalls = room(x)(y).getWalls
+
+      val dxMove = x1 - x
+      val dyMove = y1 - y
+
+      if ((dyMove == -1 && (currentCellWalls & 1) != 0) ||  // Up
+          (dxMove == 1 && (currentCellWalls & 2) != 0) ||   // Right
+          (dyMove == 1 && (currentCellWalls & 4) != 0) ||   // Down
+          (dxMove == -1 && (currentCellWalls & 8) != 0)) {  // Left
+        return true
+      }
+
+      val e2 = 2 * err
+      if (e2 > -dy) {
+        err -= dy
+        x += sx
+      }
+      if (e2 < dx) {
+        err += dx
+        y += sy
+      }
+    }
+
+    // Ensure visibility isn't blocked within the target cell
+    val targetCellWalls = room(x1)(y1).getWalls
+    val dxFinal = x1 - x0
+    val dyFinal = y1 - y0
+
+    if ((dyFinal == -1 && (targetCellWalls & 4) != 0) ||  // Target cell's "down" wall
+        (dxFinal == 1 && (targetCellWalls & 8) != 0) ||   // Target cell's "left" wall
+        (dyFinal == 1 && (targetCellWalls & 1) != 0) ||   // Target cell's "up" wall
+        (dxFinal == -1 && (targetCellWalls & 2) != 0)) {  // Target cell's "right" wall
+      return false
+    }
+
+    false
   }
 
   def generateRoom(): Unit = {
@@ -84,6 +137,11 @@ class Room(val width: Int, val height: Int) {
         room(i)(j).buildWalls(1)
       else if (j == height - 1)
         room(i)(j).buildWalls(4)
+    }
+
+    for (i <- 0 until room.length - 1 by 2) {
+      room(i)(5).buildWalls(2)
+      room(i+1)(5).buildWalls(8)
     }
   }
 
