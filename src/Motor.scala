@@ -56,6 +56,7 @@ object Motor extends App {
 	val player1Img = computeImgByLuminosity("/res/img/p1.png")
 	val player2Img = computeImgByLuminosity("/res/img/p2.png")
 	val dirtImg = computeImgByLuminosity("/res/img/dirt.png")
+	val radarImg = computeImgByLuminosity("/res/img/radar.png")
 
 	val hostButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 15, 300, 50)
 	val joinButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 90, 300, 50)
@@ -251,7 +252,7 @@ object Motor extends App {
 					if (!isHost && clientSocket != null && !clientSocket.isClosed) clientSocket.close()
 					return
 				}
-				println(s"Received: $msg")
+//				println(s"Received: $msg")
 				updateGame(msg)
 			}
 		}
@@ -436,7 +437,7 @@ object Motor extends App {
 	 * @param s The message to be sent
 	 */
 	def send(s: String): Unit = {
-		println(s"Sent: $s")
+//		println(s"Sent: $s")
 		out.println(s)
 	}
 }

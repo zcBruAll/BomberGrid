@@ -47,23 +47,6 @@ object GraphicMotor {
 					fg.drawFillRect(x, y, 2, cellSize)
 				}
 			}
-			fg.setColor(Color.BLACK)
-
-//			fg.setColor(Color.WHITE)
-//			val walls = room.getRoom(i)(j).getWalls
-//			if ((walls & 1) != 0) { // Upper wall
-//				fg.drawFillRect(x, y, cellSize, 2)
-//			}
-//			if ((walls & 2) != 0) { // Right wall
-//				fg.drawFillRect(x + cellSize - 2, y, 2, cellSize)
-//			}
-//			if ((walls & 4) != 0) { // Bottom wall
-//				fg.drawFillRect(x, y + cellSize - 2, cellSize, 2)
-//			}
-//			if ((walls & 8) != 0) { // Left wall
-//				fg.drawFillRect(x, y, 2, cellSize)
-//			}
-			fg.setColor(Color.BLACK)
 
 			room.spawnRadar()
 			room.checkRadarPickup(playerId)
@@ -76,11 +59,11 @@ object GraphicMotor {
 
 				val distCell = math.sqrt(math.pow(posP._1 - radar.x, 2) + math.pow(posP._2 - radar.y, 2)).toInt
 				if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, radar.x, radar.y)) {
-					// Draw radar as black circle with white border, centered
-					fg.setColor(Color.BLACK)
-					fg.drawFilledCircle(centerX, centerY, cellSize/3)
-					fg.setColor(Color.WHITE)
-					fg.drawCircle(centerX, centerY, cellSize/3)
+
+					if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, radar.x, radar.y)) {
+						fg.drawTransformedPicture(centerX, centerY, 0, cellSize*0.8 / Motor.radarImg(4 - distCell).getHeight, Motor.radarImg(4 - distCell))
+
+					}
 				}
 			}
 
