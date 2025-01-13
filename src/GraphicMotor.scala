@@ -22,35 +22,59 @@ object GraphicMotor {
 			val y = 45 + cellSize * j
 
 			val distCell = math.sqrt(math.pow(posP._1 - i, 2) + math.pow(posP._2 - j, 2)).toInt
-			if (distCell < 4 && !room.isWallObstructingBresenham(posP._1, posP._2, i, j)) {
+			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, i, j)) {
 				fg.drawTransformedPicture(x + cellSize / 2, y + cellSize / 2, 0, cellSize / Motor.dirtImg(4 - distCell).getHeight, Motor.dirtImg(4 - distCell))
 			} else {
 				fg.setColor(Color.BLACK)
 				fg.drawFillRect(x, y, cellSize, cellSize)
 			}
 
+			// val distCell = math.sqrt(math.pow(posP._1 - i, 2) + math.pow(posP._2 - j, 2)).toInt
+			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, i, j)) {
+				fg.setColor(Color.WHITE)
+				val walls = room.getRoom(i)(j).getWalls
+				if ((walls & 1) != 0) { // Upper wall
+					fg.drawFillRect(x, y, cellSize, 2)
+				}
+				if ((walls & 2) != 0) { // Right wall
+					fg.drawFillRect(x + cellSize - 2, y, 2, cellSize)
+				}
+				if ((walls & 4) != 0) { // Bottom wall
+					fg.drawFillRect(x, y + cellSize - 2, cellSize, 2)
+				}
+				if ((walls & 8) != 0) { // Left wall
+					fg.drawFillRect(x, y, 2, cellSize)
+				}
+			}
+			fg.setColor(Color.WHITE)
+
+//			fg.setColor(Color.WHITE)
+//			val walls = room.getRoom(i)(j).getWalls
+//			if ((walls & 1) != 0) { // Upper wall
+//				fg.drawFillRect(x, y, cellSize, 2)
+//			}
+//			if ((walls & 2) != 0) { // Right wall
+//				fg.drawFillRect(x + cellSize - 2, y, 2, cellSize)
+//			}
+//			if ((walls & 4) != 0) { // Bottom wall
+//				fg.drawFillRect(x, y + cellSize - 2, cellSize, 2)
+//			}
+//			if ((walls & 8) != 0) { // Left wall
+//				fg.drawFillRect(x, y, 2, cellSize)
+//			}
 			fg.setColor(Color.BLACK)
-			val walls = room.getRoom(i)(j).getWalls
-			if ((walls & 1) != 0) { // Upper wall
-				fg.drawFillRect(x, y, cellSize, 2)
-			}
-			if ((walls & 2) != 0) { // Right wall
-				fg.drawFillRect(x + cellSize - 2, y, 2, cellSize)
-			}
-			if ((walls & 4) != 0) { // Bottom wall
-				fg.drawFillRect(x, y + cellSize - 2, cellSize, 2)
-			}
-			if ((walls & 8) != 0) { // Left wall
-				fg.drawFillRect(x, y, 2, cellSize)
-			}
+
 		}
+
+
+
 
 		room.getActiveBombs.foreach { bomb =>
 			val x = 25 + bomb.x * cellSize
 			val y = 45 + bomb.y * cellSize
 
 			val distCell = math.sqrt(math.pow(posP._1 - bomb.x, 2) + math.pow(posP._2 - bomb.y, 2)).toInt
-			if (distCell < 4 && !room.isWallObstructingBresenham(posP._1, posP._2, bomb.x, bomb.y)) {
+			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, bomb.x, bomb.y)) {
 				fg.drawTransformedPicture(x + cellSize / 2, y + cellSize / 2, 0, cellSize / Motor.bombImg(4 - distCell).getHeight, Motor.bombImg(4 - distCell))
 			}
 		}
@@ -60,7 +84,7 @@ object GraphicMotor {
 			val x = 25 + pos._1 * cellSize
 			val y = 45 + pos._2 * cellSize
 			val distCellP = math.sqrt(math.pow(posP._1 - pos._1, 2) + math.pow(posP._2 - pos._2, 2)).toInt
-			if (distCellP < 4 && !room.isWallObstructingBresenham(posP._1, posP._2, pos._1, pos._2)) {
+			if (distCellP < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, pos._1, pos._2)) {
 				fg.drawTransformedPicture(x + cellSize / 2, y + cellSize / 2, 0, cellSize / (if (i == 1) Motor.player1Img else Motor.player2Img)(4 - distCellP).getHeight, (if (i == 1) Motor.player1Img else Motor.player2Img)(4 - distCellP))
 			}
 		}

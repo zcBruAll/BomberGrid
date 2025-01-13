@@ -69,9 +69,9 @@ class Room(val width: Int, val height: Int) {
     val distP1 = math.sqrt(math.pow(b.x - p1Pos._1, 2) + math.pow(b.y - p1Pos._2, 2)).floor.toInt
     val distP2 = math.sqrt(math.pow(b.x - p2Pos._1, 2) + math.pow(b.y - p2Pos._2, 2)).floor.toInt
 
-    if (!isWallObstructingBresenham(p1Pos._1, p1Pos._2, b.x, b.y))
+    if (!isLineOfSightBlocked(p1Pos._1, p1Pos._2, b.x, b.y))
       player1.takeDmg(25 * math.max(3 - distP1, 0))
-    if (!isWallObstructingBresenham(p2Pos._1, p2Pos._2, b.x, b.y))
+    if (!isLineOfSightBlocked(p2Pos._1, p2Pos._2, b.x, b.y))
       player2.takeDmg(25 * math.max(3 - distP2, 0))
   }
 
@@ -85,32 +85,60 @@ class Room(val width: Int, val height: Int) {
     }
   }
 
-  def isWallObstructingBresenham(x0: Int, y0: Int, x1: Int, y1: Int): Boolean = {
+  def isLineOfSightBlocked(x0: Int, y0: Int, x1: Int, y1: Int): Boolean = {
     var x = x0
     var y = y0
 
-    val dx = math.abs(x1 - x0)
-    val dy = math.abs(y1 - y0)
+    val dx = math.abs(x1 - x0)  // dx = 2 (from 3 to 1)
+    val dy = math.abs(y1 - y0)  // dy = 2 (from 3 to 5)
 
-    val sx = if (x0 < x1) 1 else -1
-    val sy = if (y0 < y1) 1 else -1
+    val sx = if (x0 < x1) 1 else -1  // sx = -1 (moving left)
+    val sy = if (y0 < y1) 1 else -1  // sy = 1 (moving down)
 
-    var err = dx - dy
+    var err = dx - dy  // Initial error
+
+    //    println(s"Starting at ($x,$y)")  // Debug logging
 
     while (x != x1 || y != y1) {
-      val currentCellWalls = room(x)(y).getWalls
+      val e2 = 2 * err
 
-      val dxMove = x1 - x
-      val dyMove = y1 - y
+      // CRITICAL FIX: Check BOTH possible next positions before moving
+      val willMoveX = e2 > -dy
+      val willMoveY = e2 < dx
 
-      if ((dyMove == -1 && (currentCellWalls & 1) != 0) ||  // Up
-          (dxMove == 1 && (currentCellWalls & 2) != 0) ||   // Right
-          (dyMove == 1 && (currentCellWalls & 4) != 0) ||   // Down
-          (dxMove == -1 && (currentCellWalls & 8) != 0)) {  // Left
-        return true
+      // Check walls in both potential movement directions
+      if (willMoveX) {
+        val nextX = x + sx
+        // Check wall in x direction
+        if ((sx > 0 && (room(x)(y).getWalls & 2) != 0) ||
+          (sx < 0 && (room(x)(y).getWalls & 8) != 0)) {
+          //          println(s"Blocked by horizontal wall at ($x,$y)")
+          return true
+        }
       }
 
-      val e2 = 2 * err
+      if (willMoveY) {
+        val nextY = y + sy
+        // Check wall in y direction
+        if ((sy > 0 && (room(x)(y).getWalls & 4) != 0) ||
+          (sy < 0 && (room(x)(y).getWalls & 1) != 0)) {
+          //          println(s"Blocked by vertical wall at ($x,$y)")
+          return true
+        }
+      }
+
+      // Now check diagonal wall crossing
+      if (willMoveX && willMoveY) {
+        val nextX = x + sx
+        val nextY = y + sy
+        // Check both cells we're crossing between
+        if ((room(x)(nextY).getWalls & (if (sx > 0) 2 else 8)) != 0 ||
+          (room(nextX)(y).getWalls & (if (sy > 0) 4 else 1)) != 0) {
+          //          println(s"Blocked by diagonal crossing at ($x,$y) to ($nextX,$nextY)")
+          return true
+        }
+      }
+
       if (e2 > -dy) {
         err -= dy
         x += sx
@@ -119,18 +147,8 @@ class Room(val width: Int, val height: Int) {
         err += dx
         y += sy
       }
-    }
 
-    // Ensure visibility isn't blocked within the target cell
-    val targetCellWalls = room(x1)(y1).getWalls
-    val dxFinal = x1 - x0
-    val dyFinal = y1 - y0
-
-    if ((dyFinal == -1 && (targetCellWalls & 4) != 0) ||  // Target cell's "down" wall
-        (dxFinal == 1 && (targetCellWalls & 8) != 0) ||   // Target cell's "left" wall
-        (dyFinal == 1 && (targetCellWalls & 1) != 0) ||   // Target cell's "up" wall
-        (dxFinal == -1 && (targetCellWalls & 2) != 0)) {  // Target cell's "right" wall
-      return false
+      //      println(s"Moved to ($x,$y)")  // Debug logging
     }
 
     false
