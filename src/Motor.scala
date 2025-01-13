@@ -326,8 +326,21 @@ object Motor extends App {
 		room = new Room(20, 15)
 		room.generateRoom()
 
-		room.movePlayer(room.getPlayer(1), 5, 6)
-		room.movePlayer(room.getPlayer(2), 19, 14)
+//		room.movePlayer(room.getPlayer(1), 5, 6)
+//		room.movePlayer(room.getPlayer(2), 19, 14)
+
+		// smart player placement
+		room.movePlayer(room.getPlayer(1),
+			1 + scala.util.Random.nextInt(5), // x between 1-6
+			1 + scala.util.Random.nextInt(13) // y between 1-13, avoiding borders
+		)
+
+		room.movePlayer(room.getPlayer(2),
+			13 + scala.util.Random.nextInt(5), // x between 13-18
+			1 + scala.util.Random.nextInt(13)  // y between 1-13, avoiding borders
+		)
+
+
 
 		send(s"INIT${room.toString}")
 

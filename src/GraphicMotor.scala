@@ -32,6 +32,7 @@ object GraphicMotor {
 			// val distCell = math.sqrt(math.pow(posP._1 - i, 2) + math.pow(posP._2 - j, 2)).toInt
 			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, i, j)) {
 				fg.setColor(Color.WHITE)
+
 				val walls = room.getRoom(i)(j).getWalls
 				if ((walls & 1) != 0) { // Upper wall
 					fg.drawFillRect(x, y, cellSize, 2)
@@ -46,7 +47,7 @@ object GraphicMotor {
 					fg.drawFillRect(x, y, 2, cellSize)
 				}
 			}
-			fg.setColor(Color.WHITE)
+			fg.setColor(Color.BLACK)
 
 //			fg.setColor(Color.WHITE)
 //			val walls = room.getRoom(i)(j).getWalls
@@ -64,10 +65,38 @@ object GraphicMotor {
 //			}
 			fg.setColor(Color.BLACK)
 
+			room.spawnRadar()
+			room.checkRadarPickup(playerId)
+
+
+			//-------------------- Radar----------------------
+			room.getActiveRadar.foreach { radar =>
+				val centerX = 25 + radar.x * cellSize + cellSize/2
+				val centerY = 45 + radar.y * cellSize + cellSize/2
+
+				val distCell = math.sqrt(math.pow(posP._1 - radar.x, 2) + math.pow(posP._2 - radar.y, 2)).toInt
+				if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, radar.x, radar.y)) {
+					// Draw radar as black circle with white border, centered
+					fg.setColor(Color.BLACK)
+					fg.drawFilledCircle(centerX, centerY, cellSize/3)
+					fg.setColor(Color.WHITE)
+					fg.drawCircle(centerX, centerY, cellSize/3)
+				}
+			}
+
+			// Draw radar ping effect if active
+			room.getRadarPingInfo(playerId).foreach { case (opacity, pos) =>
+				val x = 25 + pos._1 * cellSize
+				val y = 45 + pos._2 * cellSize
+
+				// Create semi-transparent red color based on opacity
+				val alpha = (opacity * 255).toInt
+				val pingColor = new Color(255, 0, 0, alpha)
+				fg.setColor(pingColor)
+				fg.drawFilledCircle(x + cellSize/2, y + cellSize/2, cellSize/3)
+			}
+
 		}
-
-
-
 
 		room.getActiveBombs.foreach { bomb =>
 			val x = 25 + bomb.x * cellSize

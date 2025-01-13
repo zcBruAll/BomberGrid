@@ -6,6 +6,21 @@ class Room(val width: Int, val height: Int) {
 
   private var activeBombs: List[Bomb] = List()
 
+
+  // Radar data
+  private var activeRadarPickups: List[RadarPickup] = List()
+  private var lastRadarSpawn: Long = 0
+  private val radarSpawnDelay = 25 // 45 seconds between radar spawns
+  private var player1HasRadar = false
+  private var player2HasRadar = false
+  private var lastRadarPing: Long = 0
+  private val radarPingDelay = 3000 // 3 seconds between pings
+  private val radarCooldown = 15000
+
+  private var activeRadar: Option[RadarPickup] = None
+  private var activeRadarEffect: Option[RadarEffect] = None
+
+
   private val directions = Map(
     1 -> (0, -1),   // Up
     2 -> (1, 0),    // Right
@@ -74,6 +89,65 @@ class Room(val width: Int, val height: Int) {
     if (!isLineOfSightBlocked(p2Pos._1, p2Pos._2, b.x, b.y))
       player2.takeDmg(25 * math.max(3 - distP2, 0))
   }
+
+  //-------------------- Radar Methods ----------------------
+  def spawnRadar(): Unit = {
+    val currentTime = System.currentTimeMillis()
+    if (activeRadar.isEmpty && (currentTime - lastRadarSpawn > radarCooldown)) {
+
+      //
+//      val x = scala.util.Random.nextInt(width)
+//      val y = scala.util.Random.nextInt(height)
+
+      // placing in the central 3rd of the map only
+      val x = 7 + scala.util.Random.nextInt(6) // x between 7-13 (middle third)
+      val y = 5 + scala.util.Random.nextInt(4)
+      activeRadar = Some(RadarPickup(x, y, currentTime))
+    }
+  }
+
+  def checkRadarPickup(playerId: Int): Unit = { def getActiveRadar: Option[RadarPickup] = activeRadar
+    val currentTime = System.currentTimeMillis()
+    val playerPos = getPlayer(playerId).getPos
+
+    activeRadar.foreach { radar =>
+      if (radar.x == playerPos._1 && radar.y == playerPos._2) {
+        // Player picked up radar
+        activeRadar = None
+        lastRadarSpawn = currentTime
+        activeRadarEffect = Some(RadarEffect(playerId, currentTime))
+      }
+    }
+  }
+
+  def getRadarPingInfo(playerId: Int): Option[(Float, (Int, Int))] = {
+    val currentTime = System.currentTimeMillis()
+    activeRadarEffect.flatMap { effect =>
+      if (effect.isActive(currentTime)) {
+        val opacity = effect.getPingOpacity(currentTime)
+        val opponentPos = getPlayer(3 - playerId).getPos
+        Some((opacity, opponentPos))
+      } else {
+        activeRadarEffect = None
+        None
+      }
+    }
+  }
+
+  // Add method to get radar pickups for rendering
+  def getActiveRadarPickups: List[RadarPickup] = activeRadarPickups
+  def getActiveRadar: Option[RadarPickup] = activeRadar
+
+  // Add method to check if player can see opponent via radar
+  def canPingOpponent(playerId: Int): Boolean = {
+    val currentTime = System.currentTimeMillis()
+    if (currentTime - lastRadarPing > radarPingDelay) {
+      lastRadarPing = currentTime
+      if (playerId == 1) player1HasRadar else player2HasRadar
+    } else false
+  }
+
+
 
   def buildWalls(x: Int, y: Int, wall: Int): Unit = {
     if (x >= 0 && x < width && y >= 0 && y < height) {
