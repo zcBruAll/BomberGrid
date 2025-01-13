@@ -20,6 +20,8 @@ class Room(val width: Int, val height: Int) {
   private var activeRadar: Option[RadarPickup] = None
   private var activeRadarEffect: Option[RadarEffect] = None
 
+  private var activeExplosions: List[Explosion] = List()
+
 
   private val directions = Map(
     1 -> (0, -1),   // Up
@@ -67,6 +69,16 @@ class Room(val width: Int, val height: Int) {
 
   def getActiveBombs: List[Bomb] = activeBombs
 
+//  def checkExplosions(): Unit = {
+//    val currentTime = System.currentTimeMillis()
+//    activeBombs.foreach { b =>
+//      if (b.hasExploded(currentTime))
+//        bombExplode(b)
+//    }
+//
+//    activeBombs = activeBombs.filterNot(_.hasExploded(currentTime))
+//  }
+
   def checkExplosions(): Unit = {
     val currentTime = System.currentTimeMillis()
     activeBombs.foreach { b =>
@@ -75,12 +87,27 @@ class Room(val width: Int, val height: Int) {
     }
 
     activeBombs = activeBombs.filterNot(_.hasExploded(currentTime))
+    cleanupExplosions()  // Add this line
   }
 
+//  def bombExplode(b: Bomb): Unit = {
+//    val p1Pos = player1.getPos
+//    val p2Pos = player2.getPos
+//
+//    val distP1 = math.sqrt(math.pow(b.x - p1Pos._1, 2) + math.pow(b.y - p1Pos._2, 2)).floor.toInt
+//    val distP2 = math.sqrt(math.pow(b.x - p2Pos._1, 2) + math.pow(b.y - p2Pos._2, 2)).floor.toInt
+//
+//    if (!isLineOfSightBlocked(p1Pos._1, p1Pos._2, b.x, b.y))
+//      player1.takeDmg(25 * math.max(3 - distP1, 0))
+//    if (!isLineOfSightBlocked(p2Pos._1, p2Pos._2, b.x, b.y))
+//      player2.takeDmg(25 * math.max(3 - distP2, 0))
+//  }
+
   def bombExplode(b: Bomb): Unit = {
+    val currentTime = System.currentTimeMillis()
+    // Keep existing damage logic
     val p1Pos = player1.getPos
     val p2Pos = player2.getPos
-
     val distP1 = math.sqrt(math.pow(b.x - p1Pos._1, 2) + math.pow(b.y - p1Pos._2, 2)).floor.toInt
     val distP2 = math.sqrt(math.pow(b.x - p2Pos._1, 2) + math.pow(b.y - p2Pos._2, 2)).floor.toInt
 
@@ -88,7 +115,29 @@ class Room(val width: Int, val height: Int) {
       player1.takeDmg(25 * math.max(3 - distP1, 0))
     if (!isLineOfSightBlocked(p2Pos._1, p2Pos._2, b.x, b.y))
       player2.takeDmg(25 * math.max(3 - distP2, 0))
+
+    // Add visual explosions
+    for {
+      dx <- -3 to 3
+      dy <- -3 to 3
+      newX = b.x + dx
+      newY = b.y + dy
+      if newX >= 0 && newX < width && newY >= 0 && newY < height
+    } {
+      val distance = math.sqrt(dx * dx + dy * dy).floor.toInt
+      if (distance <= 3 && !isLineOfSightBlocked(b.x, b.y, newX, newY)) {
+        activeExplosions = activeExplosions :+ Explosion(newX, newY, currentTime)
+      }
+    }
   }
+
+  def cleanupExplosions(): Unit = {
+    val currentTime = System.currentTimeMillis()
+    activeExplosions = activeExplosions.filterNot(_.isFinished(currentTime))
+  }
+
+  // Add getter for explosions
+  def getActiveExplosions: List[Explosion] = activeExplosions
 
   //-------------------- Radar Methods ----------------------
   def spawnRadar(): Unit = {

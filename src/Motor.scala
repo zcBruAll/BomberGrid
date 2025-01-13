@@ -57,6 +57,7 @@ object Motor extends App {
 	val player2Img = computeImgByLuminosity("/res/img/p2.png")
 	val dirtImg = computeImgByLuminosity("/res/img/dirt.png")
 	val radarImg = computeImgByLuminosity("/res/img/radar.png")
+	val explosionImg = computeImgByLuminosity("/res/img/explosion.png")
 
 	val hostButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 15, 300, 50)
 	val joinButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 90, 300, 50)

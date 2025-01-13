@@ -51,8 +51,7 @@ object GraphicMotor {
 			room.spawnRadar()
 			room.checkRadarPickup(playerId)
 
-
-			//-------------------- Radar----------------------
+			// Draw radar using .png
 			room.getActiveRadar.foreach { radar =>
 				val centerX = 25 + radar.x * cellSize + cellSize/2
 				val centerY = 45 + radar.y * cellSize + cellSize/2
@@ -91,6 +90,26 @@ object GraphicMotor {
 			}
 		}
 
+		room.getActiveExplosions.foreach { explosion =>
+			val x = 25 + explosion.x * cellSize
+			val y = 45 + explosion.y * cellSize
+
+			val distCell = math.sqrt(math.pow(posP._1 - explosion.x, 2) + math.pow(posP._2 - explosion.y, 2)).toInt
+			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, explosion.x, explosion.y)) {
+				val currentTime = System.currentTimeMillis()
+				val opacity = explosion.getOpacity(currentTime)
+
+				// Use the same image drawing approach as other elements
+				fg.drawTransformedPicture(
+					x + cellSize / 2,
+					y + cellSize / 2,
+					0,
+					cellSize / Motor.explosionImg(4 - distCell).getHeight,
+					Motor.explosionImg(4 - distCell)
+				)
+			}
+		}
+
 		for (i <- 1 to 2) {
 			val pos = room.getPlayer(i).getPos
 			val x = 25 + pos._1 * cellSize
@@ -111,6 +130,10 @@ object GraphicMotor {
 		val text = f"$seconds:$milliseconds%03d"
 		val textSize = fg.getStringSize(text, Motor.fontSubtitle)
 		fg.drawString(fg.width - 25 - textSize.getWidth.toInt, 45 - 10 - 10, text, Motor.fontSubtitle, Color.BLACK)
+
+
+
+
 	}
 
 	def drawRectangle(fg: FunGraphics, x: Int, y: Int, width: Int, height: Int, background: Color, borderWidth: Int = 1, borderColor: Color = Color.WHITE, borderBackgroundColor: (Color, Color, Color, Color) = (Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE), borderRadius: (Int, Int, Int, Int) = (0, 0, 0, 0)): Unit = {

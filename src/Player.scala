@@ -14,11 +14,6 @@ class Player(val playerId: Int, var life: Int = 100, var lastDropped: Long = 0) 
 
   def getPos: (Int, Int) = (x, y)
 
-  // modified for player cooldonw
-//  def setPos(pos: (Int, Int)): Unit = {
-//    x = pos._1
-//    y = pos._2
-//  }
   def setPos(pos: (Int, Int)): Unit = {
     if (canMove) {
       x = pos._1
