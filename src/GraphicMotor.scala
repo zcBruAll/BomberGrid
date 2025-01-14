@@ -71,7 +71,7 @@ object GraphicMotor {
 				val x = 25 + pos._1 * cellSize
 				val y = 45 + pos._2 * cellSize
 
-				// Create semi-transparent red color based on opacity
+				// Create red color based on opacity
 				val alpha = (opacity * 255).toInt
 				val pingColor = new Color(255, 0, 0, alpha)
 				fg.setColor(pingColor)

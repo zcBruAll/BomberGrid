@@ -342,8 +342,6 @@ object Motor extends App {
 			1 + scala.util.Random.nextInt(13)  // y between 1-13, avoiding borders
 		)
 
-
-
 		send(s"INIT${room.toString}")
 
 		startGame()
