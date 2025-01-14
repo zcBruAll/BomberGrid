@@ -10,7 +10,7 @@ class Room(val width: Int, val height: Int) {
   // Radar data
   private var activeRadarPickups: List[RadarPickup] = List()
   private var lastRadarSpawn: Long = 0
-  private val radarSpawnDelay = 25 // 45 seconds between radar spawns
+//  private val radarSpawnDelay = 25 // 45 seconds between radar spawns
   private var player1HasRadar = false
   private var player2HasRadar = false
   private var lastRadarPing: Long = 0
@@ -19,6 +19,8 @@ class Room(val width: Int, val height: Int) {
 
   private var activeRadar: Option[RadarPickup] = None
   private var activeRadarEffect: Option[RadarEffect] = None
+
+  private var activeExplosions: List[Explosion] = List()
 
 
   private val directions = Map(
@@ -75,12 +77,19 @@ class Room(val width: Int, val height: Int) {
     }
 
     activeBombs = activeBombs.filterNot(_.hasExploded(currentTime))
+    cleanupExplosions()  // Add this line
   }
 
+  /**
+   * Handle the explosion of a bomb and its effects on players and the game world
+   *
+   * @param b The bomb that is exploding
+   */
   def bombExplode(b: Bomb): Unit = {
+    val currentTime = System.currentTimeMillis()
+    // Keep existing damage logic
     val p1Pos = player1.getPos
     val p2Pos = player2.getPos
-
     val distP1 = math.sqrt(math.pow(b.x - p1Pos._1, 2) + math.pow(b.y - p1Pos._2, 2)).floor.toInt
     val distP2 = math.sqrt(math.pow(b.x - p2Pos._1, 2) + math.pow(b.y - p2Pos._2, 2)).floor.toInt
 
@@ -88,16 +97,45 @@ class Room(val width: Int, val height: Int) {
       player1.takeDmg(25 * math.max(3 - distP1, 0))
     if (!isLineOfSightBlocked(p2Pos._1, p2Pos._2, b.x, b.y))
       player2.takeDmg(25 * math.max(3 - distP2, 0))
+
+    // Add visual explosions
+    for {
+      dx <- -3 to 3
+      dy <- -3 to 3
+      newX = b.x + dx
+      newY = b.y + dy
+      if newX >= 0 && newX < width && newY >= 0 && newY < height
+    } {
+      val distance = math.sqrt(dx * dx + dy * dy).floor.toInt
+      if (distance <= 3 && !isLineOfSightBlocked(b.x, b.y, newX, newY)) {
+        activeExplosions = activeExplosions :+ Explosion(newX, newY, currentTime)
+      }
+    }
   }
 
-  //-------------------- Radar Methods ----------------------
+  /**
+   * Remove finished explosion effects from the game
+   */
+  def cleanupExplosions(): Unit = {
+    val currentTime = System.currentTimeMillis()
+    activeExplosions = activeExplosions.filterNot(_.isFinished(currentTime))
+  }
+
+  /**
+   * Get the list of active explosion effects in the game world
+   *
+   * @return List of currently active explosion effects
+   */
+  def getActiveExplosions: List[Explosion] = activeExplosions
+
+
+  /**
+   * Spawn a new radar pickup in the game world if conditions are met
+   * Radar pickups only spawn in the central third of the map
+   */
   def spawnRadar(): Unit = {
     val currentTime = System.currentTimeMillis()
     if (activeRadar.isEmpty && (currentTime - lastRadarSpawn > radarCooldown)) {
-
-      //
-//      val x = scala.util.Random.nextInt(width)
-//      val y = scala.util.Random.nextInt(height)
 
       // placing in the central 3rd of the map only
       val x = 7 + scala.util.Random.nextInt(6) // x between 7-13 (middle third)
@@ -106,6 +144,11 @@ class Room(val width: Int, val height: Int) {
     }
   }
 
+  /**
+   * Check if a player has picked up the radar and activate its effects
+   *
+   * @param playerId ID of the player to check for radar pickup
+   */
   def checkRadarPickup(playerId: Int): Unit = { def getActiveRadar: Option[RadarPickup] = activeRadar
     val currentTime = System.currentTimeMillis()
     val playerPos = getPlayer(playerId).getPos
@@ -120,6 +163,12 @@ class Room(val width: Int, val height: Int) {
     }
   }
 
+  /**
+   * Get information about the radar ping for a specific player
+   *
+   * @param playerId ID of the player to get radar information for
+   * @return Option containing ping opacity and opponent position if radar is active
+   */
   def getRadarPingInfo(playerId: Int): Option[(Float, (Int, Int))] = {
     val currentTime = System.currentTimeMillis()
     activeRadarEffect.flatMap { effect =>
@@ -134,20 +183,8 @@ class Room(val width: Int, val height: Int) {
     }
   }
 
-  // Add method to get radar pickups for rendering
-  def getActiveRadarPickups: List[RadarPickup] = activeRadarPickups
+
   def getActiveRadar: Option[RadarPickup] = activeRadar
-
-  // Add method to check if player can see opponent via radar
-  def canPingOpponent(playerId: Int): Boolean = {
-    val currentTime = System.currentTimeMillis()
-    if (currentTime - lastRadarPing > radarPingDelay) {
-      lastRadarPing = currentTime
-      if (playerId == 1) player1HasRadar else player2HasRadar
-    } else false
-  }
-
-
 
   def buildWalls(x: Int, y: Int, wall: Int): Unit = {
     if (x >= 0 && x < width && y >= 0 && y < height) {
@@ -159,24 +196,34 @@ class Room(val width: Int, val height: Int) {
     }
   }
 
+  /**
+   * Check if there is a clear line of sight between two points in the room
+   * Uses a modified Bresenham's line algorithm to check for wall collisions
+   *
+   * @param x0 Starting X-coordinate
+   * @param y0 Starting Y-coordinate
+   * @param x1 Ending X-coordinate
+   * @param y1 Ending Y-coordinate
+   * @return True if the line of sight is blocked by any walls
+   */
   def isLineOfSightBlocked(x0: Int, y0: Int, x1: Int, y1: Int): Boolean = {
     var x = x0
     var y = y0
 
-    val dx = math.abs(x1 - x0)  // dx = 2 (from 3 to 1)
-    val dy = math.abs(y1 - y0)  // dy = 2 (from 3 to 5)
+    val dx = math.abs(x1 - x0)
+    val dy = math.abs(y1 - y0)
 
     val sx = if (x0 < x1) 1 else -1  // sx = -1 (moving left)
     val sy = if (y0 < y1) 1 else -1  // sy = 1 (moving down)
 
     var err = dx - dy  // Initial error
 
-    //    println(s"Starting at ($x,$y)")  // Debug logging
+    // println(s"Starting at ($x,$y)")  // Debug logging
 
     while (x != x1 || y != y1) {
       val e2 = 2 * err
 
-      // CRITICAL FIX: Check BOTH possible next positions before moving
+      // Check BOTH possible next positions before moving
       val willMoveX = e2 > -dy
       val willMoveY = e2 < dx
 
@@ -186,7 +233,7 @@ class Room(val width: Int, val height: Int) {
         // Check wall in x direction
         if ((sx > 0 && (room(x)(y).getWalls & 2) != 0) ||
           (sx < 0 && (room(x)(y).getWalls & 8) != 0)) {
-          //          println(s"Blocked by horizontal wall at ($x,$y)")
+          // println(s"Blocked by horizontal wall at ($x,$y)")
           return true
         }
       }
@@ -196,7 +243,7 @@ class Room(val width: Int, val height: Int) {
         // Check wall in y direction
         if ((sy > 0 && (room(x)(y).getWalls & 4) != 0) ||
           (sy < 0 && (room(x)(y).getWalls & 1) != 0)) {
-          //          println(s"Blocked by vertical wall at ($x,$y)")
+          // println(s"Blocked by vertical wall at ($x,$y)")
           return true
         }
       }
@@ -205,10 +252,10 @@ class Room(val width: Int, val height: Int) {
       if (willMoveX && willMoveY) {
         val nextX = x + sx
         val nextY = y + sy
-        // Check both cells we're crossing between
+        // Check both cells we are crossing between
         if ((room(x)(nextY).getWalls & (if (sx > 0) 2 else 8)) != 0 ||
           (room(nextX)(y).getWalls & (if (sy > 0) 4 else 1)) != 0) {
-          //          println(s"Blocked by diagonal crossing at ($x,$y) to ($nextX,$nextY)")
+          // println(s"Blocked by diagonal crossing at ($x,$y) to ($nextX,$nextY)")
           return true
         }
       }
@@ -222,7 +269,7 @@ class Room(val width: Int, val height: Int) {
         y += sy
       }
 
-      //      println(s"Moved to ($x,$y)")  // Debug logging
+      // println(s"Moved to ($x,$y)")  // Debug logging
     }
 
     false
