@@ -2,13 +2,24 @@ class Player(val playerId: Int, var life: Int = 100, var lastDropped: Long = 0) 
   private var x: Int = 0
   private var y: Int = 0
 
-  val cooldown = 7500
+  private var lastMoved: Long = 0
+  private val moveDelay = 200 // 200ms between moves = 5 moves per second max
+
+  // Add this method to check if player can move
+  def canMove: Boolean =
+    lastMoved + moveDelay <= System.currentTimeMillis()
+
+  // val cooldown = 7500 // too long because all players move too fast
+  val cooldown = 3500
 
   def getPos: (Int, Int) = (x, y)
 
   def setPos(pos: (Int, Int)): Unit = {
-    x = pos._1
-    y = pos._2
+    if (canMove) {
+      x = pos._1
+      y = pos._2
+      lastMoved = System.currentTimeMillis()
+    }
   }
 
   def takeDmg(dmg: Int): Unit = {

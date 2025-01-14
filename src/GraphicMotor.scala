@@ -32,6 +32,7 @@ object GraphicMotor {
 			// val distCell = math.sqrt(math.pow(posP._1 - i, 2) + math.pow(posP._2 - j, 2)).toInt
 			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, i, j)) {
 				fg.setColor(Color.WHITE)
+
 				val walls = room.getRoom(i)(j).getWalls
 				if ((walls & 1) != 0) { // Upper wall
 					fg.drawFillRect(x, y, cellSize, 2)
@@ -46,28 +47,38 @@ object GraphicMotor {
 					fg.drawFillRect(x, y, 2, cellSize)
 				}
 			}
-			fg.setColor(Color.WHITE)
 
-//			fg.setColor(Color.WHITE)
-//			val walls = room.getRoom(i)(j).getWalls
-//			if ((walls & 1) != 0) { // Upper wall
-//				fg.drawFillRect(x, y, cellSize, 2)
-//			}
-//			if ((walls & 2) != 0) { // Right wall
-//				fg.drawFillRect(x + cellSize - 2, y, 2, cellSize)
-//			}
-//			if ((walls & 4) != 0) { // Bottom wall
-//				fg.drawFillRect(x, y + cellSize - 2, cellSize, 2)
-//			}
-//			if ((walls & 8) != 0) { // Left wall
-//				fg.drawFillRect(x, y, 2, cellSize)
-//			}
-			fg.setColor(Color.BLACK)
+			room.spawnRadar()
+			room.checkRadarPickup(playerId)
+
+			// Draw radar using .png
+			room.getActiveRadar.foreach { radar =>
+				val centerX = 25 + radar.x * cellSize + cellSize/2
+				val centerY = 45 + radar.y * cellSize + cellSize/2
+
+				val distCell = math.sqrt(math.pow(posP._1 - radar.x, 2) + math.pow(posP._2 - radar.y, 2)).toInt
+				if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, radar.x, radar.y)) {
+
+					if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, radar.x, radar.y)) {
+						fg.drawTransformedPicture(centerX, centerY, 0, cellSize*0.8 / Motor.radarImg(4 - distCell).getHeight, Motor.radarImg(4 - distCell))
+
+					}
+				}
+			}
+
+			// Draw radar ping effect if active
+			room.getRadarPingInfo(playerId).foreach { case (opacity, pos) =>
+				val x = 25 + pos._1 * cellSize
+				val y = 45 + pos._2 * cellSize
+
+				// Create red color based on opacity
+				val alpha = (opacity * 255).toInt
+				val pingColor = new Color(255, 0, 0, alpha)
+				fg.setColor(pingColor)
+				fg.drawFilledCircle(x + cellSize/2, y + cellSize/2, cellSize/3)
+			}
 
 		}
-
-
-
 
 		room.getActiveBombs.foreach { bomb =>
 			val x = 25 + bomb.x * cellSize
@@ -76,6 +87,26 @@ object GraphicMotor {
 			val distCell = math.sqrt(math.pow(posP._1 - bomb.x, 2) + math.pow(posP._2 - bomb.y, 2)).toInt
 			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, bomb.x, bomb.y)) {
 				fg.drawTransformedPicture(x + cellSize / 2, y + cellSize / 2, 0, cellSize / Motor.bombImg(4 - distCell).getHeight, Motor.bombImg(4 - distCell))
+			}
+		}
+
+		room.getActiveExplosions.foreach { explosion =>
+			val x = 25 + explosion.x * cellSize
+			val y = 45 + explosion.y * cellSize
+
+			val distCell = math.sqrt(math.pow(posP._1 - explosion.x, 2) + math.pow(posP._2 - explosion.y, 2)).toInt
+			if (distCell < 4 && !room.isLineOfSightBlocked(posP._1, posP._2, explosion.x, explosion.y)) {
+				val currentTime = System.currentTimeMillis()
+				val opacity = explosion.getOpacity(currentTime)
+
+				// Use the same image drawing approach as other elements
+				fg.drawTransformedPicture(
+					x + cellSize / 2,
+					y + cellSize / 2,
+					0,
+					cellSize / Motor.explosionImg(4 - distCell).getHeight,
+					Motor.explosionImg(4 - distCell)
+				)
 			}
 		}
 
@@ -99,6 +130,10 @@ object GraphicMotor {
 		val text = f"$seconds:$milliseconds%03d"
 		val textSize = fg.getStringSize(text, Motor.fontSubtitle)
 		fg.drawString(fg.width - 25 - textSize.getWidth.toInt, 45 - 10 - 10, text, Motor.fontSubtitle, Color.BLACK)
+
+
+
+
 	}
 
 	def drawRectangle(fg: FunGraphics, x: Int, y: Int, width: Int, height: Int, background: Color, borderWidth: Int = 1, borderColor: Color = Color.WHITE, borderBackgroundColor: (Color, Color, Color, Color) = (Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE), borderRadius: (Int, Int, Int, Int) = (0, 0, 0, 0)): Unit = {

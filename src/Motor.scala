@@ -56,6 +56,8 @@ object Motor extends App {
 	val player1Img = computeImgByLuminosity("/res/img/p1.png")
 	val player2Img = computeImgByLuminosity("/res/img/p2.png")
 	val dirtImg = computeImgByLuminosity("/res/img/dirt.png")
+	val radarImg = computeImgByLuminosity("/res/img/radar.png")
+	val explosionImg = computeImgByLuminosity("/res/img/explosion.png")
 
 	val hostButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 15, 300, 50)
 	val joinButton = new Rectangle((fg.width - menuWidth) / 2, planeImg.getHeight + 90, 300, 50)
@@ -251,7 +253,7 @@ object Motor extends App {
 					if (!isHost && clientSocket != null && !clientSocket.isClosed) clientSocket.close()
 					return
 				}
-				println(s"Received: $msg")
+//				println(s"Received: $msg")
 				updateGame(msg)
 			}
 		}
@@ -326,8 +328,19 @@ object Motor extends App {
 		room = new Room(20, 15)
 		room.generateRoom()
 
-		room.movePlayer(room.getPlayer(1), 5, 6)
-		room.movePlayer(room.getPlayer(2), 19, 14)
+//		room.movePlayer(room.getPlayer(1), 5, 6)
+//		room.movePlayer(room.getPlayer(2), 19, 14)
+
+		// smart player placement
+		room.movePlayer(room.getPlayer(1),
+			1 + scala.util.Random.nextInt(5), // x between 1-6
+			1 + scala.util.Random.nextInt(13) // y between 1-13, avoiding borders
+		)
+
+		room.movePlayer(room.getPlayer(2),
+			13 + scala.util.Random.nextInt(5), // x between 13-18
+			1 + scala.util.Random.nextInt(13)  // y between 1-13, avoiding borders
+		)
 
 		send(s"INIT${room.toString}")
 
@@ -423,7 +436,7 @@ object Motor extends App {
 	 * @param s The message to be sent
 	 */
 	def send(s: String): Unit = {
-		println(s"Sent: $s")
+//		println(s"Sent: $s")
 		out.println(s)
 	}
 }
