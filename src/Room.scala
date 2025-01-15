@@ -133,66 +133,66 @@ class Room(val width: Int, val height: Int) {
    * Check if there is a clear line of sight between two points in the room
    * Uses a modified Bresenham's line algorithm to check for wall collisions
    *
-   * @param x0 Starting X-coordinate
-   * @param y0 Starting Y-coordinate
-   * @param x1 Ending X-coordinate
-   * @param y1 Ending Y-coordinate
+   * @param startX Starting X-coordinate
+   * @param startY Starting Y-coordinate
+   * @param endX Ending X-coordinate
+   * @param endY Ending Y-coordinate
    * @return True if the line of sight is blocked by any walls
    */
-  def isLineOfSightBlocked(x0: Int, y0: Int, x1: Int, y1: Int): Boolean = {
-    var x = x0
-    var y = y0
+  def isLineOfSightBlocked(startX: Int, startY: Int, endX: Int, endY: Int): Boolean = {
+    var currentX = startX
+    var currentY = startY
 
-    val dx = math.abs(x1 - x0)
-    val dy = math.abs(y1 - y0)
+    val distanceX = math.abs(endX - startX)
+    val distanceY = math.abs(endY - startY)
 
-    val sx = if (x0 < x1) 1 else -1 // sx = -1 (moving left)
-    val sy = if (y0 < y1) 1 else -1 // sy = 1 (moving down)
+    val stepX = if (startX < endX) 1 else -1
+    val stepY = if (startY < endY) 1 else -1
 
-    var err = dx - dy // Initial error
+    var error = distanceX - distanceY // Initial error
 
-    while (x != x1 || y != y1) {
-      val e2 = 2 * err
+    while (currentX != endX || currentY != endY) {
+      val errorDouble = 2 * error
 
       // Check BOTH possible next positions before moving
-      val willMoveX = e2 > -dy
-      val willMoveY = e2 < dx
+      val canMoveX = errorDouble > -distanceY
+      val canMoveY = errorDouble < distanceX
 
       // Check wall in x direction
-      if (willMoveX) {
-        val nextX = x + sx
-        if ((sx > 0 && (room(x)(y).getWalls & 2) != 0) ||
-          (sx < 0 && (room(x)(y).getWalls & 8) != 0)) {
+      if (canMoveX) {
+        val nextX = currentX + stepX
+        if ((stepX > 0 && (room(currentX)(currentY).getWalls & 2) != 0) ||
+          (stepX < 0 && (room(currentX)(currentY).getWalls & 8) != 0)) {
           return true
         }
       }
 
       // Check wall in y direction
-      if (willMoveY) {
-        val nextY = y + sy
-        if ((sy > 0 && (room(x)(y).getWalls & 4) != 0) ||
-          (sy < 0 && (room(x)(y).getWalls & 1) != 0)) {
+      if (canMoveY) {
+        val nextY = currentY + stepY
+        if ((stepY > 0 && (room(currentX)(currentY).getWalls & 4) != 0) ||
+          (stepY < 0 && (room(currentX)(currentY).getWalls & 1) != 0)) {
           return true
         }
       }
 
       // Check diagonal wall crossing
-      if (willMoveX && willMoveY) {
-        val nextX = x + sx
-        val nextY = y + sy
-        if ((room(x)(nextY).getWalls & (if (sx > 0) 2 else 8)) != 0 ||
-          (room(nextX)(y).getWalls & (if (sy > 0) 4 else 1)) != 0) {
+      if (canMoveX && canMoveY) {
+        val nextX = currentX + stepX
+        val nextY = currentY + stepY
+        if ((room(currentX)(nextY).getWalls & (if (stepX > 0) 2 else 8)) != 0 ||
+          (room(nextX)(currentY).getWalls & (if (stepY > 0) 4 else 1)) != 0) {
           return true
         }
       }
 
-      if (e2 > -dy) {
-        err -= dy
-        x += sx
+      if (errorDouble > -distanceY) {
+        error -= distanceY
+        currentX += stepX
       }
-      if (e2 < dx) {
-        err += dx
-        y += sy
+      if (errorDouble < distanceX) {
+        error += distanceX
+        currentY += stepY
       }
     }
 
