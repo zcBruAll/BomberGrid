@@ -1,8 +1,8 @@
 /**
  * Represents an explosion effect in the game
  *
- * @param x X-coordinate of the explosion center
- * @param y Y-coordinate of the explosion center
+ * @param x         X-coordinate of the explosion center
+ * @param y         Y-coordinate of the explosion center
  * @param startTime Time when the explosion started
  */
 case class Explosion(x: Int, y: Int, startTime: Long) {
@@ -14,7 +14,7 @@ case class Explosion(x: Int, y: Int, startTime: Long) {
    */
   def getOpacity(currentTime: Long): Float = {
     val age = currentTime - startTime
-    val duration = 500 // explosion animation lasts 500ms
+    val duration = 500
     math.max(0, 1 - (age.toFloat / duration))
   }
 

@@ -2,7 +2,7 @@
  * Represents a radar effect bonus that reveals enemy positions
  *
  * @param ownerPlayerId The ID of the player who activated the radar
- * @param startTime The timestamp when the radar effect was activated
+ * @param startTime     The timestamp when the radar effect was activated
  */
 case class RadarEffect(ownerPlayerId: Int, startTime: Long) {
   val duration = 15000 // 15 seconds of radar effect
