@@ -27,13 +27,19 @@ Players navigate a bomber through a grid and stragetically drop bombs to try to 
     - clone the repo using this command: `git clone https://github.com/zcBruAll/BomberGrid.git`
     - Open the project folder with IntelliJ
   - Using IntelliJ
-    - TASKS
+    - In the main menu, 'Clone Repository'
+    - In the Repository URL tab
+      - Enter this repo url: ` https://github.com/zcBruAll/BomberGrid.git`
+      - Choose the directory where to clone the project and Clone
+
 - In IntelliJ
   - Ensure you're on branch `main`
   - Add the `fungraphics-1.5.15.jar` library to the project
     - Right click on the file > Add as library
   - Set the `src` directory as the `Source Root`
-    - Right click on the directory > Set directory as > Source Root  
+    - Right click on the directory > Set directory as > Source Root
+  - If needed, setup Scala SDK - preferred `2.13.14`
+  - Start the app through Motor.scala file
 
 ## Gameplay instructions
 - Start 2 instances of the project
@@ -42,13 +48,25 @@ Players navigate a bomber through a grid and stragetically drop bombs to try to 
 - One of the instance has to host the game and the other to join it:
   - The host gives its local IP to the client (Displayed when click on `Host a game`)
   - The client enter the host local IP (After clicking on the `Join a game` button)
-- When connected the game start directly
-- Move in the grid with `W`, `A`, `S`, `D` keys
-- Drop a bomb with `SPACE_BAR` key
+- When connected the game start directly  
+![BomberGrid_JoinGame](https://github.com/user-attachments/assets/89e8608b-fa20-4b9e-b92e-667985416fb5)
+
+- Move in the grid with `W`, `A`, `S`, `D` keys  
+![BomberGrid_Move](https://github.com/user-attachments/assets/59474df1-2db2-448f-8e15-c2dbdd587b70)
+
+- Drop a bomb with `SPACE_BAR` key  
+![BomberGrid_Bomb](https://github.com/user-attachments/assets/3878b44e-ce4f-484b-b57d-16a19ebc4219)
+
+- Somewhere in the map, radars can be obtained. At regular intervals the radar point the other player, making you able to track him.  
+![BomberGrid_Radar](https://github.com/user-attachments/assets/e1d31678-095d-4338-b849-eeea42fd69e7)
+
+
 - Try not to get exploded by the bombs (you're not protected against your own bombs) while trying to explode the other player
   - Your life bar is displayed on the top right of the game map
   - The cooldown before dropping another bomb is displayed just under the life bar
-- The game end when one of the 2 player's life reach 0
+- The game end when one of the 2 player's life reach 0  
+![BomberGrid_GameWin](https://github.com/user-attachments/assets/a8b3e30e-81e6-4429-9eda-d47304beccf1)
+
 - To replay, repeat from the second task
  
 If one of the player quits the game before it ended, the other player gent sent back to the main menu page
@@ -103,6 +121,7 @@ An infinite loop in a separated thread manage the entire graphic interface. A pa
 Buttons and textbox are simulated by mixing the mouse and key listeners with the FunGraphics library. Except the text, the plane in the main menu, the bombers and the bombs nothing is more than mix of rectangles and circles.
 
 ### Back-end
+#### Room
 More practically, the room is made of a 2D `Array` of the custom type `Cell`. Each of these cells have 2 Int values: one for the walls, another for the players id. As explained eariler in the game initialization message, they're just sum of binary values that follows a strict rule:
 - **1** `0b1`: Top wall
 - **2** `0b10`: Right wall
@@ -113,17 +132,14 @@ More practically, the room is made of a 2D `Array` of the custom type `Cell`. Ea
 `toInt` and `toString` function returns the sum of the 2 values. Since the player id can only by 1 or 2, it's multiplied by 16 to output the correct binary value.
 Everywhere in the game, the walls are manipulated by using their binary value
 
-Blasts damage are first calculated based on their distance from each player. Damage goes from 25 to 75 within an area of maximum 3. The closer the bomber, the greater the damage.  
-Calculated the same way as the fog, bombs can't damage through walls. To check if a wall was between the player and the bomb we followed these steps:
-- Take the equation of the line (where values are the index in the grid) between the player and the bomb
-- Retrieve each of the around cells that have at least one wall and share a point with the line
-- Calculate again the equation of the line but with the size of the cells displayed in the GUI
-- Check if any of the walls of the retrieved cells share a point with the line, if so, the wall obstructs the blast or vision
+To generate the room, each 3 by 4 cells, a random function between 5 are called. These function build a specific shape of walls making a semi-randomized generated room.
 
+#### Blasts
+Blasts damage are first calculated based on their distance from each player. Damage goes from 25 to 100 within an area of maximum 4. The closer the bomber, the greater the damage.  
+Calculated the same way as the fog, bombs can't damage through walls. To check if a wall is between the player and the bomb, we implemented [Bresenham's line algorithm](https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
+
+#### Fog / Vision
 The fog around the player is calculated by the distance from the player to the targeted cell. The player has a Field Of View (Fov) of maximum 5.  
-As it was said earlier, the vision obstruction is calculated in the same way as blasts (Why wouldn't they?).  
-Since the floor, the bombers and bombs are images and it didn't seemed that FunGraphics can draw rgba pixels, a little trick was used.
-As for the buttons and textboxes, luminosity is fake (In our game at least, in real-life it's a real thing). The luminosity is faked by displaying a precise image.
-For each element, they each have 5 different images (one for each level of luminosity), based on the result of the distance calculation, a specific image is displayed.
-For example here are 3 of the images for the ground:
-{Floor at lowest luminosity} - {Floor at mid luminosity} - {Floor at full luminosity}
+As it was said earlier, the vision obstruction is calculated in the same way as blasts (Why wouldn't they?).
+To apply a filter to the image based on the luminosity on the tile, we could have drawn semi-transparent rectangle over the tiles but at the time of implementation, it wasn't sure if FunGraphics would be able to do so.
+Instead, at the start, Arrays of images are created where each one had a filter applied to simulate the luminosity. Then at the time to draw the cells, distance from the player and the wall obstruction is calculated and the image to display is chosen from the Array pre-computed
